@@ -4,7 +4,7 @@ description: ggplot2-python — grammar of graphics for Python (R ggplot2 port)
 contract_class: mixed
 package_version: 4.0.2.9000.post3
 biobabel_version: 0.1.0
-generated_from_registry_commit: ea9b3b2ef720369f172d91cfa294fe8e363e3eb1e24fb3d0236cd9697b2658e9
+generated_from_registry_commit: 7022c989529a694283287ceab6eb357d560f3fdc9a5d8a7bd382d566827ec125
 ---
 
 # ggplot2-python

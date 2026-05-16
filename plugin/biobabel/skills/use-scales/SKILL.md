@@ -4,7 +4,7 @@ description: scales-python — axis transforms, breaks, palettes, formatters (R 
 contract_class: grammar
 package_version: 1.4.0.9000
 biobabel_version: 0.1.0
-generated_from_registry_commit: c39fd39dd303d7486852c4f6631fac6d31d44539622a692c9c82952b36eff0ad
+generated_from_registry_commit: fe65f5cd4365dfb611b7f0d586b50e915b3531801811d777192fba6fa806808b
 ---
 
 # scales-python
@@ -43,10 +43,10 @@ gg.scale_x_continuous(
 
 ```python
 from scales import (
-    log10_trans, sqrt_trans,
+    log10_trans, sqrt_trans, pseudo_log_trans,
     breaks_log, breaks_extended,
-    label_percent, label_dollar, label_number_si,
-    pal_viridis, brewer_pal, hue_pal,
+    label_percent, label_dollar, label_number, cut_si,
+    pal_viridis, brewer_pal, hue_pal, pal_seq_gradient,
 )
 
 # Axis transforms + breaks

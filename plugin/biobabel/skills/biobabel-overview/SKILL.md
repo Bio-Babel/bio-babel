@@ -6,9 +6,9 @@ biobabel_version: 0.1.0
 
 # biobabel
 
-Bio-Babel's agent control plane currently surfaces **5** package(s):
+Bio-Babel's agent control plane currently surfaces **6** package(s):
 
-- **Class analysis**: monocle3
+- **Class analysis**: monocle2py, monocle3
 - **Class grammar**: grid_py, gtable_py, scales
 - **Class mixed**: ggplot2_py
 

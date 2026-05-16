@@ -4,7 +4,7 @@ description: gtable-python — grob-table layout primitive (R gtable port)
 contract_class: grammar
 package_version: 0.3.6.9000.post1
 biobabel_version: 0.1.0
-generated_from_registry_commit: 5c3c8fdaf308d04ff44ba84acac8d50537c4d213b5f097784366bf6999ed00ac
+generated_from_registry_commit: 3a27676baf6c788ab7c1187c3543a9827817a611d6450001cc273003017169bf
 ---
 
 # gtable-python
@@ -24,7 +24,7 @@ Python port of [r-lib/gtable](https://github.com/r-lib/gtable) (v0.3.6.9000). A 
 ## Cardinal idioms
 
 - **Build from a matrix**: `gtable_matrix(name, grobs=[[g11, g12], [g21, g22]], widths=..., heights=...)`
-- **Build iteratively**: `Gtable.empty(...)` + chained `gtable_add_grob` with named cells
+- **Build iteratively**: `Gtable(widths=..., heights=..., name=...)` + chained `gtable_add_grob` with named cells
 - **Compose existing gtables**: `rbind_gtable(top, bottom)` / `cbind_gtable(left, right)`
 - **Surgical edits**: `gtable_filter(tab, regex)` to keep only matching cells; `gtable_trim(tab)` to drop empty boundary rows/cols
 
@@ -50,7 +50,7 @@ tab = gtable_matrix(
 )
 
 # Pattern 2: iterative with named cells
-tab = Gtable.empty(widths=Unit([1], "null"), heights=Unit([1, 6, 1], "null"))
+tab = Gtable(widths=Unit([1], "null"), heights=Unit([1, 6, 1], "null"))
 tab = gtable_add_grob(tab, title_grob,  t=1, l=1, name="title")
 tab = gtable_add_grob(tab, plot_grob,   t=2, l=1, name="plot")
 tab = gtable_add_grob(tab, legend_grob, t=3, l=1, name="legend")
