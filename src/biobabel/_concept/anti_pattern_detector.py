@@ -19,8 +19,8 @@ from __future__ import annotations
 
 import ast
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 from biobabel._registry.builder import Registry
 from biobabel.manifest_api import AntiPatternSpec

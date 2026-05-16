@@ -7,8 +7,9 @@ The Anthropic `mcp` SDK is wired in the `transports/stdio.py` adapter.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from biobabel._registry.builder import Registry, build_registry
 from biobabel._runtime.session import SessionStore

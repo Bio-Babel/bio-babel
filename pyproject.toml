@@ -1,5 +1,9 @@
 [build-system]
-requires = ["hatchling"]
+# hatchling >=1.27 is the first release with PEP 639 SPDX license-expression
+# support (`license = "MIT"` as a string rather than a table). Pinning this
+# floor prevents fast-failures on CI runners that ship an older bundled
+# hatchling and try to read the SPDX string as a legacy license table.
+requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
@@ -35,23 +39,31 @@ dependencies = [
 [project.optional-dependencies]
 verify = ["rpy2>=3.5", "Pillow", "scikit-image"]
 http   = ["uvicorn>=0.27", "starlette>=0.36"]
-dev    = ["pytest>=7", "pytest-cov", "pytest-xdist", "ruff", "mypy", "bandit"]
+# Upper bounds prevent a major-version bump of any of these tools from
+# silently breaking CI between commits. Bump the upper bound deliberately
+# (with a code-review checkpoint) when the new major arrives.
+dev = [
+    "pytest>=7,<9",
+    "pytest-cov>=4,<7",
+    "pytest-xdist>=3,<4",
+    "ruff>=0.5,<1.0",
+    "mypy>=1.0,<2.0",
+    "bandit>=1.7,<2.0",
+    "pip-audit>=2.6,<3.0",
+]
 
 [project.scripts]
 biobabel     = "biobabel.cli.__main__:main"
 biobabel-mcp = "biobabel.mcp.__main__:main"
 
 [project.urls]
-Homepage   = "https://github.com/Bio-Babel/biobabel"
-Repository = "https://github.com/Bio-Babel/biobabel"
-Issues     = "https://github.com/Bio-Babel/biobabel/issues"
-Docs       = "https://github.com/Bio-Babel/biobabel/tree/main/docs"
+Homepage   = "https://github.com/Bio-Babel/bio-babel"
+Repository = "https://github.com/Bio-Babel/bio-babel"
+Issues     = "https://github.com/Bio-Babel/bio-babel/issues"
+Docs       = "https://github.com/Bio-Babel/bio-babel/tree/main/docs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/biobabel"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"src/biobabel/data" = "biobabel/data"
 
 [tool.hatch.build.targets.sdist]
 include = ["src", "tests", "README.md", "AGENTS.md", "pyproject.toml"]

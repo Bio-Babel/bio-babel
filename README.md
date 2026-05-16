@@ -1,5 +1,7 @@
 # biobabel
 
+[![CI](https://github.com/Bio-Babel/bio-babel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Bio-Babel/bio-babel/actions/workflows/ci.yml)
+
 > Agent consumption layer for the [Bio-Babel](https://github.com/Bio-Babel) repositories.
 
 `pip install biobabel`, register the MCP server with your agent IDE, and your agent can accurately use any installed Bio-Babel package via **23 MCP tools** — without guessing R-style Python.

@@ -4,14 +4,11 @@ build an ad-hoc chain via state-graph BFS over function requires/writes.
 
 from __future__ import annotations
 
-from collections import deque
 from dataclasses import dataclass, field
 
 from biobabel._registry.builder import Registry
 from biobabel.manifest_api import (
     FunctionContract,
-    WorkflowContract,
-    WorkflowStep,
 )
 
 

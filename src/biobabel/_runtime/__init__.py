@@ -3,9 +3,9 @@
 from biobabel._runtime.artifacts import ArtifactHandle
 from biobabel._runtime.limits import RuntimeLimits
 from biobabel._runtime.policy import (
+    DEFAULT_IMPORT_DENY,
     CodeScanResult,
     CodeViolation,
-    DEFAULT_IMPORT_DENY,
     scan_code,
 )
 from biobabel._runtime.sandbox import SandboxResult, run_code

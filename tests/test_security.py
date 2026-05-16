@@ -6,12 +6,10 @@ to violate a stated invariant.
 
 from __future__ import annotations
 
-from biobabel._registry.builder import Registry
 from biobabel._registry.differ import diff_registries
-from biobabel._registry.lockfile import build_lock, manifest_sha256
+from biobabel._registry.lockfile import build_lock
 from biobabel._runtime.session import SessionStore
 from biobabel.mcp.server import BiobabelMCPServer
-
 
 # --- 1. MCP tool descriptions must NOT be built from manifest content -----
 

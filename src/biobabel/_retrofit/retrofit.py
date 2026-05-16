@@ -15,9 +15,10 @@ import importlib
 import importlib.util
 import inspect
 import textwrap
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import tomlkit
 import yaml

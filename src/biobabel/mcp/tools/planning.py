@@ -6,7 +6,8 @@ from typing import Any
 
 from biobabel._planner.prereq_check import check_prerequisites as _check
 from biobabel._planner.recommender import recommend as _recommend
-from biobabel._planner.workflow_planner import PlanStep, plan_workflow as _plan
+from biobabel._planner.workflow_planner import PlanStep
+from biobabel._planner.workflow_planner import plan_workflow as _plan
 from biobabel._registry.builder import Registry
 from biobabel._runtime.session import SessionStore
 from biobabel.mcp.envelope import error, success

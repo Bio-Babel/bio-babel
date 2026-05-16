@@ -15,7 +15,7 @@ def test_lock_stable_under_unchanged_manifest(registry):
 def test_lock_changes_when_manifest_changes(registry, grammar_manifest):
     lock1 = build_lock(registry)
     grammar_manifest.maturity = "stable"
-    registry._anti_pattern_by_id  # force registry coherence
+    _ = registry._anti_pattern_by_id  # force registry coherence
     # mutate via re-discovery surrogate
     sha_before = lock1.entries[0].manifest_sha256
     registry.packages["grid_py"].manifest.maturity = "stable"  # type: ignore[misc]

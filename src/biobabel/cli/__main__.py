@@ -22,12 +22,12 @@ import click
 from rich.console import Console
 from rich.table import Table
 
+from biobabel import SCHEMA_VERSION
 from biobabel._contracts.validator import validate_package_dir
 from biobabel._registry.builder import build_registry
-from biobabel._registry.lockfile import build_lock, read_lock, write_lock
 from biobabel._registry.differ import diff_registries
+from biobabel._registry.lockfile import build_lock, read_lock, write_lock
 from biobabel._retrofit.retrofit import retrofit_package
-from biobabel import SCHEMA_VERSION
 from biobabel.manifest_api import PackageManifest
 
 console = Console()
@@ -83,8 +83,8 @@ def cmd_doctor(lock_path: str | None, strict: bool) -> None:
 
     drift_count = 0
     if lock_path:
-        from biobabel._registry.lockfile import build_lock, read_lock
         from biobabel._registry.differ import diff_registries
+        from biobabel._registry.lockfile import build_lock, read_lock
         lock = read_lock(Path(lock_path))
         current = build_lock(reg)
         diff = diff_registries(lock, current)
@@ -131,7 +131,7 @@ def cmd_validate_package(import_name: str | None, biobabel_dir: str | None, stri
             spec = importlib.util.find_spec(import_name)
         except (ImportError, ValueError) as exc:
             click.echo(f"ERROR: cannot find {import_name!r}: {exc}", err=True)
-            raise SystemExit(2)
+            raise SystemExit(2) from exc
         if spec is None or spec.origin is None:
             click.echo(
                 f"ERROR: {import_name!r} has no locatable __init__.py "

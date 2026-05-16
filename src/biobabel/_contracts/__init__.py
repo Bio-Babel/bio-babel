@@ -3,8 +3,8 @@
 from biobabel._contracts.validator import (
     ContractIssue,
     ContractValidationReport,
-    validate_package_dir,
     validate_manifest_only,
+    validate_package_dir,
 )
 
 __all__ = [

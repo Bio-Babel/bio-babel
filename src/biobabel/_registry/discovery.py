@@ -7,9 +7,9 @@ that returns a :class:`PackageManifest`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from importlib.metadata import EntryPoint, distributions, entry_points
-from typing import Callable
 
 from biobabel.manifest_api import PackageManifest
 

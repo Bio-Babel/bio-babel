@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Least-privilege default. Individual jobs that need to write (e.g. comment
+# on PRs, push tags) should escalate explicitly.
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -14,10 +19,13 @@ jobs:
   test:
     name: test (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        # Mirror the `Programming Language :: Python :: 3.X` classifiers in
+        # pyproject.toml. Update both together.
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -25,10 +33,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+          cache-dependency-path: pyproject.toml
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          python -m pip install -e ".[dev]"
       - name: ruff
         run: ruff check src tests
       - name: pytest
@@ -37,52 +46,70 @@ jobs:
   security:
     name: security (bandit + pip-audit)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: pyproject.toml
       - name: Install biobabel + audit tools
+        # pip-audit is declared in the [dev] extras, so a single install
+        # picks up everything this job needs.
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install pip-audit
+          python -m pip install -e ".[dev]"
       - name: bandit (static analysis for common Python pitfalls)
+        # The sandbox/policy/retrofit modules legitimately wrap subprocess
+        # and parse user code; bandit flags them with predictable false
+        # positives. Keep the exclusion list in sync with reality.
         run: |
           bandit -r src/biobabel \
             -ll \
             -x src/biobabel/_runtime/sandbox.py,src/biobabel/_runtime/policy.py,src/biobabel/_retrofit/retrofit.py
-        # ↑ The sandbox/policy/retrofit modules legitimately wrap subprocess +
-        # parse user code; bandit flags them with predictable false positives.
       - name: pip-audit (CVEs in dependencies)
-        run: pip-audit --strict
-      - name: security-property tests
-        run: pytest tests/test_security.py tests/test_policy.py tests/test_sandbox.py -v
+        # Audit the project's *declared* dependencies (from pyproject.toml)
+        # rather than the full installed environment. This (a) ignores the
+        # editable biobabel itself — which is not on PyPI yet and would
+        # otherwise fail --strict — and (b) ignores transitive build tooling
+        # (setuptools/wheel) whose CVEs are out of scope for this project.
+        # Bumps in declared deps still get caught.
+        run: pip-audit --strict .
 
-  index-and-validate:
-    name: index + validate rgrid contract
+  cli-smoke:
+    # Replaces the previous `index-and-validate` job, which was dead
+    # aspirational scaffolding (it claimed to validate rgrid-python without
+    # actually installing rgrid-python in CI). This job exercises the public
+    # CLI surface and the schema exporter — both of which must remain
+    # importable & runnable for downstream agents to consume biobabel.
+    name: cli smoke
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: pyproject.toml
       - name: Install biobabel
-        run: pip install -e .
-      - name: Install rgrid-python (Class B canonical contract)
         run: |
-          # In CI, rgrid-python is fetched as a sibling repo via a manual
-          # checkout step or git submodule. For now, this job is gated on the
-          # presence of a sibling rgrid-python checkout; uncomment when wired:
-          # pip install rgrid-python
-          echo "rgrid-python contract validation skipped until packaged for CI"
-      - name: biobabel index
-        run: biobabel index || true   # tolerates empty registry
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: biobabel --version / --help
+        run: |
+          biobabel --version
+          biobabel --help
+      - name: biobabel index (empty registry tolerated)
+        run: biobabel index
       - name: biobabel doctor
-        run: biobabel doctor || true
-
-# Nightly drift-watch job will live in a separate workflow once
-# `biobabel index --check-upstream-head` ships. See final_plan.md §18.2.
+        run: biobabel doctor
+      - name: biobabel export-schema produces valid JSON
+        run: |
+          biobabel export-schema --out schema.json
+          python -c "import json, pathlib; json.loads(pathlib.Path('schema.json').read_text())"
+      - name: biobabel-mcp imports cleanly
+        # We don't launch the stdio server (it would block); just verify
+        # the entry point resolves and the module imports without error.
+        run: python -c "from biobabel.mcp.server import build_server; build_server()"

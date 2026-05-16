@@ -8,8 +8,8 @@ of import-names from the registry.
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 DEFAULT_IMPORT_ALLOW: frozenset[str] = frozenset(
     {

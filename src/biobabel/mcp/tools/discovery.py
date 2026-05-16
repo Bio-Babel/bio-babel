@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from biobabel._registry.builder import Registry
 from biobabel._planner.recommender import search_text
+from biobabel._registry.builder import Registry
 from biobabel.mcp.envelope import error, success
 
 
