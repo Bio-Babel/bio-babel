@@ -30,7 +30,8 @@ For **Claude Code** — full plugin (MCP + slash commands + hook + skills):
 For **Cursor / Continue / OpenAI / generic MCP** — bare MCP server:
 
 ```bash
-biobabel install --target cursor       # or continue | openai | claude_code | all
+biobabel install   --target cursor     # or continue | openai | claude_code | all
+biobabel uninstall --target cursor     # symmetric inverse; --dry-run to preview, --force to remove user-modified workspace files
 ```
 
 ## Register your own package into the ecosystem
