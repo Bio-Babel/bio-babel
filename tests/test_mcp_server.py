@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from biobabel._runtime.session import SessionStore
 from biobabel.mcp.server import BiobabelMCPServer
 
@@ -222,6 +224,10 @@ def test_runtime_success_records_trace_in_default_session(registry, tmp_path):
 
 
 def test_load_dataframe_trace_records_output_handle_and_path_summary(registry, tmp_path):
+    # load_dataframe's sandbox probe imports pandas; pandas is not a biobabel
+    # dependency, so on a bare CI install this test would fail at the probe
+    # rather than at the trace-shape assertions it actually exercises.
+    pytest.importorskip("pandas")
     csv_path = tmp_path / "input.csv"
     csv_path.write_text("a,b\n1,2\n", encoding="utf-8")
     store = SessionStore(root=tmp_path / "sessions")
