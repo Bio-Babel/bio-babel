@@ -3,7 +3,7 @@ name: use-grid-py
 description: grid_py (rgrid-python) — R grid graphics port
 contract_class: grammar
 package_version: 4.5.3.post3
-biobabel_version: 0.2.0
+biobabel_version: 0.3.0
 generated_from_registry_commit: 20beb342450a88ef49fbf361988724296d5aa4aaf9787c1d23d54d2c493d390b
 ---
 

@@ -22,9 +22,6 @@ from biobabel.manifest_api import PackageManifest
 MANIFEST_ENTRY_POINT_GROUP = "biobabel.manifest"
 DETECTOR_ENTRY_POINT_GROUP = "biobabel.detectors"
 
-# Backward-compatible alias; some older internal callers reference this name.
-ENTRY_POINT_GROUP = MANIFEST_ENTRY_POINT_GROUP
-
 
 @dataclass(frozen=True)
 class DiscoveredManifest:
@@ -57,7 +54,7 @@ class DiscoveryError:
                               failed to load or returned the wrong type.
     - ``kind="detector"``  — same for a detector entry point.
     - ``kind="duplicate"`` — two distributions tried to register the same
-                              identifier (package import_name, function id,
+                              identifier (package import_name, symbol id,
                               concept id, idiom id, anti-pattern id, workflow
                               id, or detector id). The first registration
                               keeps the slot; the second is skipped.

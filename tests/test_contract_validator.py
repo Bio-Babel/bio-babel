@@ -9,12 +9,14 @@ import pytest
 
 from biobabel._contracts.validator import validate_package_dir
 
-RGRID_BIOBABEL = Path(
-    os.environ.get(
-        "BIOBABEL_RGRID_DIR",
-        "/home/groups/xiaojie/nianping/projects/tmp/agent_friendly/Bio-Babel-public/rgrid-python/grid_py/_biobabel",
-    )
+_WORKSPACE_RGRID = (
+    Path(__file__).resolve().parents[2]
+    / "Bio-Babel-public"
+    / "rgrid-python"
+    / "grid_py"
+    / "_biobabel"
 )
+RGRID_BIOBABEL = Path(os.environ.get("BIOBABEL_RGRID_DIR", str(_WORKSPACE_RGRID)))
 
 
 @pytest.mark.skipif(not RGRID_BIOBABEL.is_dir(), reason="rgrid-python _biobabel not available")

@@ -1,8 +1,7 @@
-"""Registry: indexed view over discovered manifests + detectors."""
+"""Registry: indexed view over discovered manifests and detectors."""
 
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 from biobabel._registry.discovery import (
@@ -15,9 +14,10 @@ from biobabel._registry.discovery import (
 from biobabel.manifest_api import (
     AntiPatternSpec,
     ConceptSpec,
-    FunctionContract,
     IdiomSpec,
     PackageManifest,
+    SymbolContract,
+    TemplateSpec,
     WorkflowContract,
 )
 
@@ -30,11 +30,6 @@ def _record_duplicate(
     keeper_distribution: str,
     skipped_distribution: str,
 ) -> None:
-    """Append a ``DiscoveryError(kind='duplicate')`` describing a clash.
-
-    The first registration wins; the colliding registration is skipped so the
-    rest of its host manifest can still register what doesn't clash.
-    """
     errors.append(
         DiscoveryError(
             name=key,
@@ -42,7 +37,7 @@ def _record_duplicate(
             error=(
                 f"duplicate {kind_label} {key!r}: first registered by "
                 f"{keeper_distribution!r}, now also declared by "
-                f"{skipped_distribution!r} — keeping first, ignoring second"
+                f"{skipped_distribution!r}; keeping first, ignoring second"
             ),
             kind="duplicate",
         )
@@ -51,21 +46,16 @@ def _record_duplicate(
 
 @dataclass
 class Registry:
-    """In-memory index over all discovered manifests and detectors."""
-
     packages: dict[str, DiscoveredManifest] = field(default_factory=dict)
     detectors: dict[str, DiscoveredDetector] = field(default_factory=dict)
     errors: list[DiscoveryError] = field(default_factory=list)
 
-    # Reverse indexes (built once on construction)
-    _function_by_id: dict[str, tuple[str, FunctionContract]] = field(default_factory=dict)
+    _symbol_by_id: dict[str, tuple[str, SymbolContract]] = field(default_factory=dict)
     _workflow_by_id: dict[str, tuple[str, WorkflowContract]] = field(default_factory=dict)
+    _template_by_id: dict[str, tuple[str, TemplateSpec]] = field(default_factory=dict)
     _concept_by_id: dict[str, tuple[str, ConceptSpec]] = field(default_factory=dict)
     _idiom_by_id: dict[str, tuple[str, IdiomSpec]] = field(default_factory=dict)
     _anti_pattern_by_id: dict[str, tuple[str, AntiPatternSpec]] = field(default_factory=dict)
-
-    # Extension reverse-index: parent_function_id → [extending pkg.symbol]
-    _extended_by: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
 
     def manifest(self, import_name: str) -> PackageManifest | None:
         entry = self.packages.get(import_name)
@@ -87,11 +77,35 @@ class Registry:
             out = [d for d in out if d.manifest.maturity == maturity]
         return out
 
-    def function(self, symbol_id: str) -> tuple[str, FunctionContract] | None:
-        return self._function_by_id.get(symbol_id)
+    def list_symbols(self, package: str | None = None) -> list[tuple[str, SymbolContract]]:
+        return [
+            (pkg, symbol)
+            for pkg, symbol in self._symbol_by_id.values()
+            if package is None or pkg == package
+        ]
+
+    def list_workflows(self, package: str | None = None) -> list[tuple[str, WorkflowContract]]:
+        return [
+            (pkg, workflow)
+            for pkg, workflow in self._workflow_by_id.values()
+            if package is None or pkg == package
+        ]
+
+    def list_templates(self, package: str | None = None) -> list[tuple[str, TemplateSpec]]:
+        return [
+            (pkg, template)
+            for pkg, template in self._template_by_id.values()
+            if package is None or pkg == package
+        ]
+
+    def symbol(self, symbol_id: str) -> tuple[str, SymbolContract] | None:
+        return self._symbol_by_id.get(symbol_id)
 
     def workflow(self, workflow_id: str) -> tuple[str, WorkflowContract] | None:
         return self._workflow_by_id.get(workflow_id)
+
+    def template(self, template_id: str) -> tuple[str, TemplateSpec] | None:
+        return self._template_by_id.get(template_id)
 
     def concept(self, concept_id: str) -> tuple[str, ConceptSpec] | None:
         return self._concept_by_id.get(concept_id)
@@ -105,9 +119,6 @@ class Registry:
     def detector(self, detector_id: str) -> DiscoveredDetector | None:
         return self.detectors.get(detector_id)
 
-    def extended_by(self, symbol_id: str) -> list[str]:
-        return list(self._extended_by.get(symbol_id, []))
-
     def all_idioms(self) -> list[tuple[str, IdiomSpec]]:
         return list(self._idiom_by_id.values())
 
@@ -116,13 +127,6 @@ class Registry:
 
 
 def build_registry() -> Registry:
-    """Discover all entry points (manifests + detectors), build a fully indexed registry.
-
-    Collisions (two distributions declaring the same identifier) are recorded
-    as ``DiscoveryError(kind="duplicate")`` rather than silently
-    last-write-wins. The first registration keeps the slot; the colliding
-    registration is skipped. ``biobabel.health`` surfaces these to the user.
-    """
     manifest_successes, manifest_errors = discover()
     detector_successes, detector_errors = discover_detectors()
     reg = Registry(errors=list(manifest_errors) + list(detector_errors))
@@ -140,71 +144,12 @@ def build_registry() -> Registry:
 
         reg.packages[d.import_name] = d
         m = d.manifest
-
-        for fn in m.functions:
-            if fn.id in reg._function_by_id:
-                existing_pkg, _ = reg._function_by_id[fn.id]
-                _record_duplicate(
-                    reg.errors,
-                    kind_label="function id",
-                    key=fn.id,
-                    keeper_distribution=reg.packages[existing_pkg].distribution,
-                    skipped_distribution=d.distribution,
-                )
-                continue
-            reg._function_by_id[fn.id] = (d.import_name, fn)
-
-        for wf in m.workflows:
-            if wf.id in reg._workflow_by_id:
-                existing_pkg, _ = reg._workflow_by_id[wf.id]
-                _record_duplicate(
-                    reg.errors,
-                    kind_label="workflow id",
-                    key=wf.id,
-                    keeper_distribution=reg.packages[existing_pkg].distribution,
-                    skipped_distribution=d.distribution,
-                )
-                continue
-            reg._workflow_by_id[wf.id] = (d.import_name, wf)
-
-        for c in m.concepts:
-            if c.id in reg._concept_by_id:
-                existing_pkg, _ = reg._concept_by_id[c.id]
-                _record_duplicate(
-                    reg.errors,
-                    kind_label="concept id",
-                    key=c.id,
-                    keeper_distribution=reg.packages[existing_pkg].distribution,
-                    skipped_distribution=d.distribution,
-                )
-                continue
-            reg._concept_by_id[c.id] = (d.import_name, c)
-
-        for idiom in m.idioms:
-            if idiom.id in reg._idiom_by_id:
-                existing_pkg, _ = reg._idiom_by_id[idiom.id]
-                _record_duplicate(
-                    reg.errors,
-                    kind_label="idiom id",
-                    key=idiom.id,
-                    keeper_distribution=reg.packages[existing_pkg].distribution,
-                    skipped_distribution=d.distribution,
-                )
-                continue
-            reg._idiom_by_id[idiom.id] = (d.import_name, idiom)
-
-        for ap in m.anti_patterns:
-            if ap.id in reg._anti_pattern_by_id:
-                existing_pkg, _ = reg._anti_pattern_by_id[ap.id]
-                _record_duplicate(
-                    reg.errors,
-                    kind_label="anti_pattern id",
-                    key=ap.id,
-                    keeper_distribution=reg.packages[existing_pkg].distribution,
-                    skipped_distribution=d.distribution,
-                )
-                continue
-            reg._anti_pattern_by_id[ap.id] = (d.import_name, ap)
+        _index_many(reg, d, "symbol", m.symbols, reg._symbol_by_id)
+        _index_many(reg, d, "workflow", m.workflows, reg._workflow_by_id)
+        _index_many(reg, d, "template", m.templates, reg._template_by_id)
+        _index_many(reg, d, "concept", m.concepts, reg._concept_by_id)
+        _index_many(reg, d, "idiom", m.idioms, reg._idiom_by_id)
+        _index_many(reg, d, "anti_pattern", m.anti_patterns, reg._anti_pattern_by_id)
 
     for dd in detector_successes:
         if dd.detector_id in reg.detectors:
@@ -218,17 +163,19 @@ def build_registry() -> Registry:
             continue
         reg.detectors[dd.detector_id] = dd
 
-    # Build extension reverse index in a second pass — needs full set of imports.
-    for d in manifest_successes:
-        if reg.packages.get(d.import_name) is not d:
-            # This manifest was a duplicate and not registered; skip its extends.
-            continue
-        m = d.manifest
-        for ext in m.extends:
-            for provided in ext.provides:
-                if provided.replaces_or_extends:
-                    reg._extended_by[provided.replaces_or_extends].append(
-                        f"{d.import_name}.{provided.name}"
-                    )
-
     return reg
+
+
+def _index_many(reg: Registry, d: DiscoveredManifest, label: str, items: list, index: dict) -> None:
+    for item in items:
+        if item.id in index:
+            existing_pkg, _ = index[item.id]
+            _record_duplicate(
+                reg.errors,
+                kind_label=f"{label} id",
+                key=item.id,
+                keeper_distribution=reg.packages[existing_pkg].distribution,
+                skipped_distribution=d.distribution,
+            )
+            continue
+        index[item.id] = (d.import_name, item)

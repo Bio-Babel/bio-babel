@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from biobabel._runtime.policy import scan_code
+from biobabel._concept.policy import scan_code
 
 
 def test_safe_code_passes():

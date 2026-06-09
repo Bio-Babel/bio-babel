@@ -418,22 +418,26 @@ def _remove_workspace_file(
 _BIOBABEL_RULE = """# biobabel
 
 biobabel is the agent control plane for the Bio-Babel ecosystem (R-to-Python
-bioinformatics ports). When the user mentions ggplot2, monocle3, pheatmap,
-ComplexHeatmap, copykat, grid_py, gtable, scales, etc., reach for the
+bioinformatics ports). When the user mentions ggplot2, monocle2py, monocle3,
+pheatmap, ComplexHeatmap, grid_py, gtable, scales, etc., reach for the
 biobabel.* MCP tools first instead of guessing the Python API from R memory.
 
 Key tools:
 - biobabel.list_packages()         — every registered package with triggers/tags/capabilities/not_when; rank yourself
-- biobabel.plan_workflow(task)     — Class A pipeline (Monocle3, copykat, ...)
-- biobabel.check_prerequisites     — verify adata state before each step
+- biobabel.search_contracts(query) — find relevant symbols, workflows, templates, concepts, and idioms
+- biobabel.list_workflows(package) / describe_workflow(id) — reference multi-step workflows
 - biobabel.describe_concept(id)    — Class B mental model (grid_py.Viewport, ...)
 - biobabel.list_idioms(package)    — idiomatic patterns
-- biobabel.describe_symbol(id)     — function signature + state-graph contract
-- biobabel.check_code(code)        — anti-pattern detector
-- biobabel.run_code / run_recipe   — sandboxed execution
+- biobabel.describe_symbol(id)     — exact signature, parameters, state contract, and failure fixes
+- biobabel.check_code(code)        — AST policy + anti-pattern lint of a snippet (does not run it)
 
 Hard rule: if the user pastes R-style syntax (`library(`, `<-`, `%>%`,
 `aes(displ, hwy)` without quotes), DO NOT translate line-by-line. Instead
 call biobabel.describe_concept / describe_symbol / list_idioms to fetch the
 Python API directly — the Python port may NOT mirror R 1:1.
+
+biobabel does not infer intent, plan, or execute code for you. You plan from
+the user's request and run code with your own tools; use biobabel to look up
+exact package contracts and to lint snippets (check_code) before writing or
+running them.
 """

@@ -9,10 +9,10 @@
 
 | Side | Who writes here | What they write |
 |------|-----------------|-----------------|
-| **Producer side** — upstream package | Bio-Babel maintainers (you) | a `_biobabel/` directory with YAML contracts + Python recipes, plus a Python entry-point declaration |
+| **Producer side** — upstream package | Bio-Babel maintainers (you) | a `_biobabel/` directory with YAML contracts, plus a Python entry-point declaration |
 | **Consumer side** — end user / IDE  | end users running `biobabel install --target X` | wiring that points their MCP-aware IDE (Claude Code, Cursor, Continue) at the local `biobabel-mcp` server |
 
-biobabel sits in the middle. At runtime it discovers the producer-side contracts via Python entry points and exposes them to the consumer side as 20 MCP tools across 6 groups.
+biobabel sits in the middle. At runtime it discovers the producer-side contracts via Python entry points and exposes them to the consumer side as 15 read-only MCP tools for contract discovery, snippet linting, and health metadata. biobabel does not execute code — running it is the calling agent's job.
 
 ```
 ┌──────────────────────────────────┐         ┌──────────────────────────────────┐
@@ -31,30 +31,37 @@ biobabel sits in the middle. At runtime it discovers the producer-side contracts
 
 > "Here is everything an agent needs to know to use my package correctly."
 
-Every upstream Bio-Babel package (rgrid-python, ggplot2-python, monocle3-python, ...) ships a `_biobabel/` directory **inside its source tree**. biobabel **does not** introspect upstream code via reflection or signature scraping. No contract → biobabel can't see the package. This is hard policy, not a heuristic (see §0.4 of `final_plan.md`).
+Every upstream Bio-Babel package (rgrid-python, ggplot2-python, monocle2-python, monocle3-python, ...) ships a `_biobabel/` directory **inside its source tree**. biobabel **does not** introspect upstream code via reflection or signature scraping. No contract → biobabel can't see the package. This is hard policy, not a heuristic (see §0.4 of `final_plan.md`).
 
 The minimum mandatory shape:
 
 ```
 your_pkg/_biobabel/
 ├── __init__.py            # factory: get_manifest() -> PackageManifest
-├── package.yaml           # contract_class, tier, maturity, triggers, recipes index
-├── skill.md               # narrative explanation for the LLM
-├── examples/smoke.py      # CI gate: runs in <60s, must succeed
-└── recipes/               # at least one task-level Python recipe
+└── package.yaml           # schema_version, contract_class, metadata, optional inline contracts
 ```
 
-Class-specific additions:
+Recommended supporting files:
+
+```
+your_pkg/_biobabel/
+├── skill.md               # narrative explanation for the LLM
+└── examples/smoke.py      # CI smoke check for producer maintainers
+```
+
+Queryable contract objects may be declared inline in `package.yaml` or split
+into YAML files under these directories:
 
 | File / dir       | Class A (Analysis) | Class B (Grammar) | Class AB (Mixed) |
 |------------------|:------------------:|:-----------------:|:----------------:|
-| `functions/`     | ✓                  | —                 | ✓                |
-| `workflows/`     | ✓                  | —                 | optional         |
-| `concepts/`      | —                  | ✓                 | ✓                |
-| `idioms/`        | —                  | ✓                 | ✓                |
-| `anti_patterns/` | —                  | ✓                 | ✓                |
+| `symbols/`       | required           | recommended       | required         |
+| `workflows/`     | recommended        | optional          | optional         |
+| `templates/`     | optional           | optional          | optional         |
+| `concepts/`      | optional           | recommended       | recommended      |
+| `idioms/`        | optional           | recommended       | recommended      |
+| `anti_patterns/` | optional           | recommended       | recommended      |
 
-**See it in practice**: `Bio-Babel-public/rgrid-python/grid_py/_biobabel/` is the canonical Class B example. 5 concepts, 6 idioms, 3 anti-patterns, and 3 recipes.
+`symbols/` is the exact call surface: signatures, parameters, state reads/writes, examples, and failure fixes. `workflows/` is only a linear reference description for the agent to plan from: each step has `symbol`, `purpose`, optional `args`, and optional `notes`. There is no `next` field, no prerequisite checker, and no workflow executor in biobabel.
 
 ### Producer side — the entry point
 
@@ -83,7 +90,7 @@ for ep in entry_points(group="biobabel.manifest"):
     registry.add(ep.name, manifest)
 ```
 
-Consequence: **whatever Bio-Babel packages the user has `pip install`-ed are exactly what biobabel sees**. Install rgrid + ggplot2 + monocle3 → biobabel returns three packages. Uninstall one → it disappears. Zero configuration on the user side.
+Consequence: **whatever Bio-Babel packages the user has `pip install`-ed are exactly what biobabel sees**. Install rgrid + ggplot2 + monocle2py → biobabel returns three packages. Uninstall one → it disappears. Zero configuration on the user side.
 
 ### Producer side — registering AST anti-pattern detectors
 
@@ -193,45 +200,63 @@ LLM:  biobabel.check_code(code, package="grid_py")
 Returns: {issues: []}   (no anti-pattern hit)
         │
         ▼
-LLM:  biobabel.run_code(code)
-        │
-        │  subprocess guardrail: rlimits + AST scan + workspace cwd
-        │  default session is created lazily on the first runtime call
-        │  (not a security boundary — see ADR-0006)
-        │  user code imports grid_py, draws, writes multi_panel.png
-        │  guardrail harvests new files → ArtifactHandle with provenance
-        │  runtime trace records tool, duration, ok/error, handles, artifacts,
-        │  and code hash (not raw code)
-        │
-        ▼
-Returns: {ok: true, session_id, active_handles, new_artifacts: [...]}
-        │
-        ▼
-Optional: biobabel.list_traces() returns recent runtime calls for the default
-session; passing session_id reads that explicit session.
+LLM:  runs the code with its OWN execution tool (terminal / python);
+      user code imports grid_py, draws, writes multi_panel.png
         │
         ▼
 LLM shows the artifact path or content to the user.
 ```
 
-Note that biobabel itself **does not draw anything** and **does not understand grid graphics**. All it does:
+Note that biobabel itself **does not draw anything**, **does not understand grid graphics**, and **does not run code**. All it does:
 
 1. Discovers what packages exist (entry points)
 2. Reads their declared concepts / idioms / anti-patterns (YAML)
-3. Surfaces them as MCP tools (envelope + dispatch)
-4. Guards execution against agent mistakes (subprocess + rlimits + AST scan; **not** a security boundary — see ADR-0006)
-5. Records provenance and lightweight per-session runtime traces (artifact hashes, code hashes, package versions, handle refs)
+3. Surfaces them as read-only MCP tools (envelope + dispatch)
+4. Statically lints agent-drafted snippets on request (`check_code`: AST policy scan + the package's anti-pattern detectors)
 
-The actual *knowledge* lives in each upstream package's `_biobabel/`.
+The actual *knowledge* lives in each upstream package's `_biobabel/`. Execution is the calling agent's job, with the agent's own tools.
+
+### Multi-step analyses keep state on disk
+
+biobabel holds no session object and no hidden AnnData handle — it never executes code. When an analysis is naturally multi-step, the agent runs each step with its own execution tool and persists intermediate state into a file, reading it back for the next step.
+
+For AnnData workflows, the recommended state carrier is an `.h5ad` file:
+
+```python
+# step 1: initialise and persist intermediate state
+import anndata as ad
+import monocle2py as m2
+
+adata = ad.read_h5ad("hematopoiesis_raw.h5ad")
+m2.new_cell_dataset(adata)
+m2.detect_genes(adata)
+m2.estimate_size_factors(adata)
+adata.write_h5ad("step1_size_factors.h5ad")
+```
+
+```python
+# step 2: resume from the previous artifact
+import anndata as ad
+import monocle2py as m2
+
+adata = ad.read_h5ad("step1_size_factors.h5ad")
+m2.estimate_dispersions(adata)
+m2.set_ordering_filter(adata, ordering_genes=adata.var_names[:1000])
+m2.reduce_dimension(adata, reduction_method="DDRTree")
+m2.order_cells(adata, root_state=1)
+adata.write_h5ad("step2_pseudotime.h5ad")
+```
+
+Using the filesystem as the state boundary makes each step reproducible from a visible artifact, and the per-step contracts (`describe_symbol`'s `requires` / `writes`) tell the agent exactly what each call needs and produces.
 
 ## Architectural invariants (do not break these)
 
 1. **Contract is mandatory.** No `_biobabel/` → not registered. No reflection fallback. (See `_registry/discovery.py`: there is exactly one discovery code path.)
 2. **Entry-point only.** biobabel never scans `site-packages/` looking for packages. The producer must declare itself.
-3. **Subprocess guardrail only.** No `exec()`, no thread isolation, no in-process eval. All user-generated code runs via `_runtime/sandbox.py` — but this is a *guardrail against agent mistakes*, not a security boundary. See ADR-0006 for the threat model and what is explicitly out of scope.
+3. **biobabel never executes code.** No subprocess, no `exec()`, no in-process eval. The agent runs code with its own tools; biobabel only reads contracts and statically lints snippets on request. The import/call policy used by `check_code` lives in `_concept/policy.py`.
 4. **MCP-first.** Every agent-facing capability is reachable through a tool name like `biobabel.X`. The CLI exists for human maintainers.
 5. **No silent degradation.** Missing manifests, broken entry points, duplicate ids, and unregistered detector ids surface as explicit discovery errors or tool errors. There is no "best effort" reflection mode.
-6. **One schema version at a time.** Manifest schema v2 is additive within itself. Breaking changes require an explicit v3 (with plan-level approval).
+6. **One internal schema version at a time.** Current manifest schema is v1. Until public release, breaking changes update v1 directly; no backward-compatibility layer is kept.
 
 ## Where the code lives
 
@@ -242,12 +267,11 @@ biobabel/
 │   ├── detector_api.py         ← public detector callable types
 │   ├── _registry/              ← entry-point discovery + in-memory indexes
 │   ├── _contracts/             ← _biobabel/ directory validator
-│   ├── _runtime/               ← subprocess guardrail, session, artifacts, trace
-│   ├── _planner/               ← search / plan_workflow / check_prereq
-│   ├── _concept/               ← idiom search + anti-pattern AST detector
+│   ├── _registry/search.py     ← deterministic lexical contract search
+│   ├── _concept/               ← idiom search + anti-pattern AST detector + check_code static policy
 │   ├── _retrofit/              ← `biobabel new contract` — introspect an existing pkg, emit _biobabel/ skeleton
 │   ├── _exporters/             ← biobabel install --target X
-│   ├── mcp/                    ← 20 tools, JSON-RPC stdio transport
+│   ├── mcp/                    ← 15 read-only tools, JSON-RPC stdio transport
 │   └── cli/                    ← biobabel CLI (click)
 └── tests/                      ← unit tests covering all of the above
 ```
@@ -292,8 +316,9 @@ What it does (one shot, NOT runtime reflection):
 5. Writes `_biobabel/` with:
    - `__init__.py` (working `get_manifest()` factory)
    - `package.yaml` (TODO-marked fields you must edit)
-   - `skill.md`, `examples/smoke.py`, `recipes/README_TODO.md`
-   - `functions/<name>.yaml` for each detected public function (Class A/AB)
+   - `skill.md`, `examples/smoke.py`, `templates/README_TODO.md`
+   - `symbols/<name>.yaml` for each detected public callable/class
+   - `workflows/README_TODO.md` placeholders (Class A/AB)
    - `concepts/idioms/anti_patterns/README_TODO.md` placeholders (Class B/AB)
 6. Additively patches `pyproject.toml` via `tomlkit` (preserves your existing comments + ordering):
    ```toml
@@ -303,7 +328,7 @@ What it does (one shot, NOT runtime reflection):
    [project.entry-points."biobabel.manifest"]
    <import_name> = "<import_name>._biobabel:get_manifest"
    ```
-7. Prints a TODO checklist sorted by priority (top-5 functions by parameter count first).
+7. Prints a TODO checklist sorted by priority (top-5 symbols by parameter count first).
 
 **This is dev-time scaffolding, not runtime reflection.** The introspection output is frozen into YAML on disk for you to review and edit. At MCP-server-time biobabel only reads the YAML, never re-introspects. The `_biobabel/` hard constraint (§0.4) is preserved.
 

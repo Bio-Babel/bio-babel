@@ -87,11 +87,12 @@ def test_retrofit_generates_expected_files(demo_pkg):
     assert (biobabel / "skill.md").is_file()
     assert not (biobabel / "r_translate.yaml").exists()  # R-translation feature was cut
     assert (biobabel / "examples" / "smoke.py").is_file()
-    # functions/ generated for analysis class
-    assert (biobabel / "functions" / "estimate_size_factors.yaml").is_file()
-    assert (biobabel / "functions" / "plot_summary.yaml").is_file()
-    # Helper is a class — not emitted as a function
-    assert not (biobabel / "functions" / "Helper.yaml").exists()
+    # symbols/ generated for public callables/classes
+    assert (biobabel / "symbols" / "estimate_size_factors.yaml").is_file()
+    assert (biobabel / "symbols" / "plot_summary.yaml").is_file()
+    assert (biobabel / "symbols" / "Helper.yaml").is_file()
+    assert (biobabel / "templates" / "README_TODO.md").is_file()
+    assert (biobabel / "workflows" / "README_TODO.md").is_file()
 
 
 def test_retrofit_refuses_when_biobabel_already_exists(demo_pkg):
@@ -143,8 +144,10 @@ def test_retrofit_unknown_import_returns_error(tmp_path):
 def test_retrofit_function_yaml_has_inspected_signature(demo_pkg):
     pkg_dir, _ = demo_pkg
     retrofit_package(import_name="demopkg", contract_class="analysis")
-    fn_yaml = (pkg_dir / "_biobabel" / "functions" / "estimate_size_factors.yaml").read_text()
-    assert "execution_class: adata_mutation" in fn_yaml
+    fn_yaml = (pkg_dir / "_biobabel" / "symbols" / "estimate_size_factors.yaml").read_text()
+    assert "kind: function" in fn_yaml
+    assert "signature: 'estimate_size_factors(" in fn_yaml
     assert "name: adata" in fn_yaml
     assert "name: scale" in fn_yaml
+    assert "Mutates the first AnnData-like argument" in fn_yaml
     assert "Compute per-cell size factors" in fn_yaml

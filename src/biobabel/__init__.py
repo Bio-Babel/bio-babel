@@ -1,14 +1,11 @@
-"""biobabel — agent control plane for the Bio-Babel ecosystem.
+"""biobabel — agent contract server for the Bio-Babel ecosystem.
 
-Stable public Python surfaces for upstream package authors:
+Stable public Python surfaces for producer packages:
 
-- :mod:`biobabel.manifest_api` — Pydantic models for the ``_biobabel/``
-  contract (PackageManifest, FunctionContract, AntiPatternSpec, ...).
-- :mod:`biobabel.detector_api` — types for callables registered via the
-  ``biobabel.detectors`` entry-point group (DetectorMatch, DetectorFn).
-  Added in schema v2.
+- :mod:`biobabel.manifest_api` — schema v1 contract models.
+- :mod:`biobabel.detector_api` — callable types for optional AST detectors.
 
-Everything else (``_registry``, ``_runtime``, ``_concept``, ...) is private.
+Everything else is implementation detail.
 """
 
 from biobabel.detector_api import DetectorFn, DetectorMatch
@@ -17,25 +14,21 @@ from biobabel.manifest_api import (
     AntiPatternSpec,
     CompositionSpec,
     ConceptSpec,
-    ExtensionRef,
     FailureFix,
-    FunctionContract,
     IdiomSpec,
-    InternalStep,
-    MentalModel,
     PackageManifest,
     Parameter,
-    ParameterSet,
-    ProvidedExtension,
-    Recipe,
     RPackageRef,
-    TaskTrigger,
+    SymbolContract,
+    TemplateParameter,
+    TemplateSpec,
     WorkflowContract,
+    WorkflowInput,
     WorkflowStep,
 )
 
-__version__ = "0.2.0"
-SCHEMA_VERSION = 2
+__version__ = "0.3.0"
+SCHEMA_VERSION = 1
 
 __all__ = [
     "AntiPatternDetection",
@@ -44,21 +37,17 @@ __all__ = [
     "ConceptSpec",
     "DetectorFn",
     "DetectorMatch",
-    "ExtensionRef",
     "FailureFix",
-    "FunctionContract",
     "IdiomSpec",
-    "InternalStep",
-    "MentalModel",
     "PackageManifest",
     "Parameter",
-    "ParameterSet",
-    "ProvidedExtension",
     "RPackageRef",
-    "Recipe",
     "SCHEMA_VERSION",
-    "TaskTrigger",
+    "SymbolContract",
+    "TemplateParameter",
+    "TemplateSpec",
     "WorkflowContract",
+    "WorkflowInput",
     "WorkflowStep",
     "__version__",
 ]

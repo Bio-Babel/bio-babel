@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from biobabel._concept.anti_pattern_detector import detect_anti_patterns
+from biobabel._concept.policy import scan_code
 from biobabel._registry.builder import Registry
-from biobabel._runtime.policy import scan_code
 from biobabel.mcp.envelope import success
 
 
@@ -22,7 +22,7 @@ def check_code(
     for v in scan.violations:
         issues.append(
             {
-                "kind": "security",
+                "kind": "policy",
                 "severity": "error",
                 "line": v.line,
                 "message": v.detail,

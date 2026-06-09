@@ -1,3 +1,5 @@
+<img align="right" width="240" alt="biobabel logo" src="assets/biobabel-logo.svg">
+
 # biobabel
 
 [![CI](https://github.com/Bio-Babel/bio-babel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Bio-Babel/bio-babel/actions/workflows/ci.yml)
@@ -8,19 +10,21 @@
 
 | Scenario | Example ask | What biobabel gives the agent |
 |----------|-------------|-------------------------------|
-| Run an analysis using a registered package | *"use monocle3 to compute pseudotime on this AnnData"* | state-machine pipeline contract (6 steps with `requires` / `writes` / `next`), per-step prerequisite check, guarded subprocess execution |
-| Build new Python code on a foundation package | *"draw an N×N panel grid using grid_py"* | concept layer (Viewport / Grob / Unit / Gpar invariants), idiom library, AST-based anti-pattern detection |
+| Run an analysis using a registered package | *"use monocle2py to compute pseudotime on this AnnData"* | exact symbol contracts, linear reference workflows, reusable templates, and static code checking |
+| Build new Python code on a foundation package | *"draw an N×N panel grid using grid_py"* | exact symbol contracts, concept invariants, idiom library, reusable templates, and AST-based anti-pattern detection |
+
+biobabel does **not** plan the analysis for the agent and does **not** execute code. The agent owns intent understanding, chooses a workflow, asks biobabel for precise package facts, writes complete code, and runs that code with its own tools.
 
 ## Install
 
 ```bash
-pip install biobabel monocle3-python ggplot2-python
+pip install biobabel monocle2-python ggplot2-python
 biobabel index    # confirms discovery, lists registered packages
 ```
 
 ## Plug into your agent IDE
 
-For **Claude Code** — full plugin (MCP + slash commands + hook + skills):
+For **Claude Code** — full plugin (MCP + hook + skills):
 
 ```
 /plugin marketplace add Bio-Babel/bio-babel

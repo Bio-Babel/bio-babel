@@ -57,7 +57,7 @@ R_INDICATORS: list[tuple[re.Pattern[str], str]] = [
     ),
     (
         re.compile(r"\bcds\s*<-"),
-        "`cds <- ...` looks like a Monocle3 CellDataSet assignment. The Python analog uses `AnnData`. Call `biobabel.plan_workflow(task='pseudotime trajectory')` for the canonical 6-step pipeline.",
+        "`cds <- ...` looks like a Monocle CellDataSet assignment. The Python analog usually uses `AnnData`. Search `biobabel.search_contracts(query='pseudotime trajectory')`, then inspect matching workflows and symbols before writing code.",
     ),
     (
         re.compile(r"\bpushViewport\s*\(|\bpopViewport\s*\(|\bgrid\.[A-Za-z]+\s*\("),

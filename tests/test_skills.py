@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -43,8 +44,13 @@ def test_overview_reflects_current_mcp_surface(tmp_path, registry):
     out = tmp_path / "skills"
     build_skills(registry, out)
     body = (out / "biobabel-overview" / "SKILL.md").read_text()
-    assert "20 MCP tools" in body
+    assert "15 read-only MCP tools" in body
     for stale in (
+        "biobabel.plan_workflow",
+        "biobabel.check_prerequisites",
+        "biobabel.list_traces",
+        "biobabel.run_recipe",
+        "biobabel.run_code",
         "biobabel.r_translate",
         "/biobabel:r-translate",
         "/biobabel:migrate",
@@ -57,8 +63,13 @@ def test_overview_reflects_current_mcp_surface(tmp_path, registry):
 def test_shipped_plugin_overview_matches_current_surface():
     root = Path(__file__).resolve().parent.parent
     body = (root / "plugin" / "biobabel" / "skills" / "biobabel-overview" / "SKILL.md").read_text()
-    assert "20 MCP tools" in body
+    assert "15 read-only MCP tools" in body
     for stale in (
+        "biobabel.plan_workflow",
+        "biobabel.check_prerequisites",
+        "biobabel.list_traces",
+        "biobabel.run_recipe",
+        "biobabel.run_code",
         "biobabel.r_translate",
         "/biobabel:r-translate",
         "/biobabel:migrate",
@@ -66,6 +77,16 @@ def test_shipped_plugin_overview_matches_current_surface():
         "r-parity-auditor",
     ):
         assert stale not in body
+
+
+def test_shipped_plugin_manifest_matches_current_surface():
+    root = Path(__file__).resolve().parent.parent
+    manifest = json.loads((root / "plugin" / "biobabel" / ".claude-plugin" / "plugin.json").read_text())
+    description = manifest["description"]
+    assert "15 read-only MCP tools" in description
+    assert "run complete code" not in description
+    assert "slash commands" not in description
+    assert "23 MCP tools" not in description
 
 
 def test_packages_without_skill_md_are_skipped_with_reason(tmp_path, registry):

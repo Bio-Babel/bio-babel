@@ -1,27 +1,16 @@
-"""Registry: discovery + lookups + provenance hash."""
+"""Registry: discovery indexes and duplicate handling."""
 
 from __future__ import annotations
 
 from unittest.mock import patch
 
 from biobabel._registry.builder import build_registry
-from biobabel._registry.discovery import (
-    DiscoveredDetector,
-    DiscoveredManifest,
-)
+from biobabel._registry.discovery import DiscoveredDetector, DiscoveredManifest
 from biobabel._registry.sha import manifest_sha256
-from biobabel.manifest_api import (
-    ConceptSpec,
-    FunctionContract,
-    MentalModel,
-    PackageManifest,
-)
+from biobabel.manifest_api import ConceptSpec, PackageManifest, SymbolContract
 
 
 def test_manifest_sha256_is_stable_for_unchanged_manifest(registry):
-    """The hash function used to stamp generated SKILL.md files must be
-    deterministic for the same manifest content.
-    """
     m = registry.packages["grid_py"].manifest
     assert manifest_sha256(m) == manifest_sha256(m)
 
@@ -38,18 +27,12 @@ def test_lookups(registry):
     assert registry.manifest("grid_py") is not None
     assert registry.concept("grid_py.Viewport") is not None
     assert registry.idiom("grid_py.push_draw_pop") is not None
-    assert registry.function("monocle3.preprocess_cds") is not None
+    assert registry.symbol("monocle3.preprocess_cds") is not None
     assert registry.workflow("monocle3.basic_trajectory") is not None
+    assert registry.template("monocle3.basic_script") is not None
 
 
-# --- collision detection ---------------------------------------------------
-#
-# Two distributions registering the same identifier must not silently
-# last-write-wins. ``build_registry`` records each collision as a
-# ``DiscoveryError(kind="duplicate")`` so ``biobabel.health`` can surface it.
-
-
-def _mk_pkg(import_name: str, *, distribution: str, concepts=(), functions=()) -> DiscoveredManifest:
+def _mk_pkg(import_name: str, *, distribution: str, concepts=(), symbols=()) -> DiscoveredManifest:
     return DiscoveredManifest(
         import_name=import_name,
         distribution=distribution,
@@ -59,19 +42,17 @@ def _mk_pkg(import_name: str, *, distribution: str, concepts=(), functions=()) -
             distribution=distribution,
             import_name=import_name,
             display_name=import_name,
-            contract_class="analysis" if functions else "grammar",
+            contract_class="analysis" if symbols else "grammar",
             concepts=list(concepts),
-            functions=list(functions),
+            symbols=list(symbols),
         ),
     )
 
 
 def _build_with(manifests, detectors=()):
     with (
-        patch("biobabel._registry.builder.discover",
-              return_value=(list(manifests), [])),
-        patch("biobabel._registry.builder.discover_detectors",
-              return_value=(list(detectors), [])),
+        patch("biobabel._registry.builder.discover", return_value=(list(manifests), [])),
+        patch("biobabel._registry.builder.discover_detectors", return_value=(list(detectors), [])),
     ):
         return build_registry()
 
@@ -82,9 +63,7 @@ def test_duplicate_package_import_name_is_recorded_first_wins():
 
     reg = _build_with([pkg_a, pkg_b])
 
-    # First wins
     assert reg.packages["grid_py"].distribution == "rgrid-python"
-    # Collision recorded loud
     dups = [e for e in reg.errors if e.kind == "duplicate"]
     assert len(dups) == 1
     assert dups[0].name == "grid_py"
@@ -92,40 +71,24 @@ def test_duplicate_package_import_name_is_recorded_first_wins():
     assert "package import_name" in dups[0].error
 
 
-def test_duplicate_function_id_across_packages_is_recorded():
-    fn = FunctionContract(
-        id="shared.fn",
-        import_path="shared.fn",
-        execution_class="stateless",
-    )
-    pkg_a = _mk_pkg("pkg_a", distribution="dist-a", functions=[fn])
-    pkg_b = _mk_pkg("pkg_b", distribution="dist-b", functions=[fn])
+def test_duplicate_symbol_id_across_packages_is_recorded():
+    symbol = SymbolContract(id="shared.fn", import_path="shared.fn")
+    pkg_a = _mk_pkg("pkg_a", distribution="dist-a", symbols=[symbol])
+    pkg_b = _mk_pkg("pkg_b", distribution="dist-b", symbols=[symbol])
 
     reg = _build_with([pkg_a, pkg_b])
 
-    # Both packages registered (different import_names) — no package collision
     assert "pkg_a" in reg.packages and "pkg_b" in reg.packages
-    # First function wins
-    assert reg.function("shared.fn")[0] == "pkg_a"
-    # Collision recorded
-    dups = [e for e in reg.errors if e.kind == "duplicate" and "function id" in e.error]
+    assert reg.symbol("shared.fn")[0] == "pkg_a"
+    dups = [e for e in reg.errors if e.kind == "duplicate" and "symbol id" in e.error]
     assert len(dups) == 1
     assert dups[0].name == "shared.fn"
 
 
 def test_duplicate_concept_id_across_packages_is_recorded():
-    """The old P3-4 scenario: two packages declaring the same concept id
-    without namespacing. Catches lazy producers who skip the
-    ``pkg.ConceptName`` convention."""
-    c = ConceptSpec(
-        id="Viewport",
-        name="Viewport",
-        category="x",
-        description="",
-        mental_model=MentalModel(general=""),
-    )
-    pkg_a = _mk_pkg("pkg_a", distribution="dist-a", concepts=[c])
-    pkg_b = _mk_pkg("pkg_b", distribution="dist-b", concepts=[c])
+    concept = ConceptSpec(id="Viewport", name="Viewport", description="")
+    pkg_a = _mk_pkg("pkg_a", distribution="dist-a", concepts=[concept])
+    pkg_b = _mk_pkg("pkg_b", distribution="dist-b", concepts=[concept])
 
     reg = _build_with([pkg_a, pkg_b])
 
@@ -159,24 +122,13 @@ def test_duplicate_detector_id_is_recorded():
 
 
 def test_duplicate_package_skips_remaining_member_registrations():
-    """When a package's import_name collides, the rest of its manifest
-    members are NOT registered either — otherwise a forked package could
-    quietly inject functions/concepts/idioms under the keeper's name."""
-    fn = FunctionContract(
-        id="grid_py.fn",
-        import_path="grid_py.fn",
-        execution_class="stateless",
-    )
+    symbol = SymbolContract(id="grid_py.fn", import_path="grid_py.fn")
     keeper = _mk_pkg("grid_py", distribution="rgrid-python")
-    forked = _mk_pkg("grid_py", distribution="rgrid-python-fork", functions=[fn])
+    forked = _mk_pkg("grid_py", distribution="rgrid-python-fork", symbols=[symbol])
 
     reg = _build_with([keeper, forked])
 
-    # forked.fn must NOT be in the registry (fork was rejected wholesale)
-    assert reg.function("grid_py.fn") is None
-    # The package import_name collision is the only recorded duplicate;
-    # no spurious function-id collision is emitted because the fork's
-    # function was never attempted.
+    assert reg.symbol("grid_py.fn") is None
     dups = [e for e in reg.errors if e.kind == "duplicate"]
     assert len(dups) == 1
     assert "package import_name" in dups[0].error

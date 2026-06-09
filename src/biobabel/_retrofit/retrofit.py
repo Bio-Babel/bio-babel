@@ -40,7 +40,7 @@ class RetrofitResult:
     error: str = ""
 
 
-# Heuristics for execution_class / contract_class.
+# Heuristics for symbol behavior / contract_class.
 # Producers always review the generated YAML, so these are best-effort
 # defaults — wrong guesses cost a single edit, not a regression.
 _ADATA_NAMES = {"adata", "anndata", "cds"}
@@ -168,11 +168,12 @@ def retrofit_package(
 class SymbolInfo:
     name: str
     qual_name: str               # e.g. "<import_name>.<function_name>"
+    signature: str
     parameters: list[dict[str, Any]]
     return_annotation: str
     docstring: str
     is_class: bool
-    execution_class_guess: str   # "stateless" | "adata_mutation" | ...
+    behavior_guess: str          # "plain_call" | "adata_mutation" | ...
 
 
 def _introspect_robust(
@@ -288,19 +289,22 @@ def _stub_symbol(name: str, submod_qual: str) -> SymbolInfo:
     return SymbolInfo(
         name=name,
         qual_name=f"{submod_qual}.{name}",
+        signature="",
         parameters=[],
         return_annotation="",
         docstring="(submodule import failed; signature could not be introspected — fill manually)",
         is_class=False,
-        execution_class_guess="stateless",
+        behavior_guess="plain_call",
     )
 
 
 def _describe(name: str, obj: Callable[..., Any], pkg_name: str) -> SymbolInfo:
     params: list[dict[str, Any]] = []
     return_anno = ""
+    signature = ""
     try:
         sig = inspect.signature(obj)
+        signature = f"{name}{sig}"
         for pname, p in sig.parameters.items():
             params.append(
                 {
@@ -316,16 +320,17 @@ def _describe(name: str, obj: Callable[..., Any], pkg_name: str) -> SymbolInfo:
         pass
 
     docstring = inspect.getdoc(obj) or ""
-    guess = _guess_execution_class(name, params)
+    guess = _guess_symbol_behavior(name, params)
 
     return SymbolInfo(
         name=name,
         qual_name=f"{pkg_name}.{name}",
+        signature=signature,
         parameters=params,
         return_annotation=return_anno,
         docstring=docstring,
         is_class=inspect.isclass(obj),
-        execution_class_guess=guess,
+        behavior_guess=guess,
     )
 
 
@@ -345,22 +350,22 @@ def _default_repr(default: Any) -> Any:
     return repr(default)
 
 
-def _guess_execution_class(name: str, params: list[dict[str, Any]]) -> str:
+def _guess_symbol_behavior(name: str, params: list[dict[str, Any]]) -> str:
     if name.startswith(_PLOT_PREFIXES):
         return "plot"
     if not params:
-        return "stateless"
+        return "plain_call"
     first = params[0]["name"].lower()
     first_type = (params[0].get("type") or "").lower()
     if first in _ADATA_NAMES or "anndata" in first_type or "cds" in first_type:
         return "adata_mutation"
     if first in _DF_NAMES or "dataframe" in first_type:
         return "dataframe_mutation"
-    return "stateless"
+    return "plain_call"
 
 
 def _guess_contract_class(symbols: list[SymbolInfo]) -> str:
-    """Heuristic from the mix of guessed execution_class values.
+    """Heuristic from the mix of guessed symbol behaviors.
 
     "analysis" wins when adata-mutating functions are common; "grammar"
     wins when there are enough plot helpers and few adata mutators.
@@ -368,8 +373,8 @@ def _guess_contract_class(symbols: list[SymbolInfo]) -> str:
     """
     if not symbols:
         return "analysis"
-    adata_like = sum(1 for s in symbols if s.execution_class_guess == "adata_mutation")
-    plot_like = sum(1 for s in symbols if s.execution_class_guess == "plot")
+    adata_like = sum(1 for s in symbols if s.behavior_guess == "adata_mutation")
+    plot_like = sum(1 for s in symbols if s.behavior_guess == "plot")
     ratio = adata_like / len(symbols)
     if ratio >= _ANALYSIS_HEURISTIC_RATIO:
         return "analysis"
@@ -398,13 +403,24 @@ def _build_plan(
     )
     plan[biobabel_dir / "skill.md"] = _render_skill_md(import_name)
     plan[biobabel_dir / "examples" / "smoke.py"] = _render_smoke_py(import_name)
-    plan[biobabel_dir / "recipes" / "README_TODO.md"] = _render_recipes_todo(import_name)
+    plan[biobabel_dir / "templates" / "README_TODO.md"] = _render_templates_todo(import_name)
+
+    public_symbols = [s for s in symbols if s.name and not s.name.startswith("_")]
+    if public_symbols:
+        for s in public_symbols:
+            plan[biobabel_dir / "symbols" / f"{s.name}.yaml"] = _render_symbol_yaml(s, import_name)
+    else:
+        plan[biobabel_dir / "symbols" / "README_TODO.md"] = (
+            "# symbols/\n\n"
+            "TODO: add SymbolContract YAML files for the public APIs an agent should call.\n"
+        )
 
     if contract_class in ("analysis", "mixed"):
-        for s in symbols:
-            if s.is_class:
-                continue
-            plan[biobabel_dir / "functions" / f"{s.name}.yaml"] = _render_function_yaml(s, import_name)
+        plan[biobabel_dir / "workflows" / "README_TODO.md"] = (
+            "# workflows/\n\n"
+            "TODO: add WorkflowContract YAML files for canonical multi-step analyses.\n"
+            "Delete this file if the package only exposes independent symbols.\n"
+        )
 
     if contract_class in ("grammar", "mixed"):
         # Leave concepts/idioms/anti_patterns/ empty TODO directories — these
@@ -449,8 +465,9 @@ _INIT_PY_TEMPLATE = textwrap.dedent('''\
         data = yaml.safe_load((_HERE / "package.yaml").read_text(encoding="utf-8")) or {}
 
         for subdir, field in (
-            ("functions", "functions"),
+            ("symbols", "symbols"),
             ("workflows", "workflows"),
+            ("templates", "templates"),
             ("concepts", "concepts"),
             ("idioms", "idioms"),
             ("anti_patterns", "anti_patterns"),
@@ -476,14 +493,13 @@ def _render_package_yaml(
     import_name: str, contract_class: str, r_package: str | None, package_root: Path
 ) -> str:
     data: dict[str, Any] = {
-        "schema_version": 2,
+        "schema_version": 1,
         "repo": "TODO: https://github.com/<org>/<repo>",
         "distribution": "TODO: <pypi-distribution-name>",
         "import_name": import_name,
         "display_name": f"TODO: {import_name} display name",
         "contract_class": contract_class,
         "tier": 3,
-        "type": "use",
         "maturity": "alpha",
         "capabilities": [],
         "domain_tags": [],
@@ -491,7 +507,6 @@ def _render_package_yaml(
         "foundation": [],
         "triggers": [],
         "not_when": [],
-        "recipes": [],
     }
     if r_package:
         data["r_package"] = {
@@ -550,47 +565,55 @@ def _render_smoke_py(import_name: str) -> str:
         ''')
 
 
-def _render_recipes_todo(import_name: str) -> str:
+def _render_templates_todo(import_name: str) -> str:
     return textwrap.dedent(f"""\
-        # recipes/
+        # templates/
 
-        TODO: add at least one Python recipe (`<id>.py`) demonstrating a typical
-        task with `{import_name}`. Delete this README when you've added a real recipe.
+        Optional: add TemplateSpec YAML files for reusable script or function
+        skeletons that an agent can adapt for `{import_name}`.
 
-        Each recipe must be re-declared in `package.yaml` under `recipes:`:
+        Keep these generic. Do not add benchmark-specific or one-off tasks here.
+        Delete this README when you add real templates, or if templates are not useful.
 
         ```yaml
-        recipes:
-          - id: {import_name}.minimal
-            path: recipes/minimal.py
-            description: "..."
+        id: {import_name}.minimal_script
+        task_tags: []
+        description: "..."
+        parameters: []
+        code_template: |
+          import {import_name}
+        expected_artifacts: []
         ```
         """)
 
 
-def _render_function_yaml(s: SymbolInfo, import_name: str) -> str:
+def _render_symbol_yaml(s: SymbolInfo, import_name: str) -> str:
+    purpose = s.docstring.split("\n\n")[0] if s.docstring else ""
+    mutates = ""
+    if s.behavior_guess == "adata_mutation":
+        mutates = "Mutates the first AnnData-like argument in place; verify exact writes manually."
+    elif s.behavior_guess == "dataframe_mutation":
+        mutates = "May mutate the first DataFrame-like argument; verify exact writes manually."
+
     data = {
         "id": f"{import_name}.{s.name}",
         "import_path": s.qual_name,
-        "execution_class": s.execution_class_guess,
-        "intent": [],
-        "description": s.docstring.split("\n\n")[0] if s.docstring else "",
+        "kind": "class" if s.is_class else "function",
+        "signature": s.signature,
+        "purpose": purpose,
+        "description": purpose,
         "parameters": s.parameters,
-        # Canonical flat-string shape (see manifest_api._canonicalize_state).
-        # Each entry, once filled, is "<slot>.<key>" (state-presence) or
-        # "X:<semantic>" (adata.X content claim).
+        "mutates": mutates,
+        "returns": s.return_annotation,
         "requires": [],
         "writes": [],
-        "returns_kind": "value",
-        "returns_type": s.return_annotation,
-        "next": [],
-        "failure_fixes": [],
         "examples": [],
-        "tested_on": "",
+        "failure_fixes": [],
+        "related": [],
     }
     header = (
         f"# Auto-generated stub for {s.qual_name}.\n"
-        "# Review and fill: intent, requires, writes, returns_kind, next, failure_fixes.\n"
+        "# Review and fill: purpose, mutates, requires, writes, examples, failure_fixes, related.\n"
     )
     return header + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
 
@@ -663,11 +686,13 @@ def _build_todos(
     if candidates:
         names = ", ".join(c.name for c in candidates)
         todos.append(
-            f"Fill the top-{len(candidates)} functions/*.yaml (intent / requires / writes / next): {names}"
+            f"Fill the top-{len(candidates)} symbols/*.yaml (purpose / mutates / requires / writes / examples): {names}"
         )
 
     todos.append("Replace TODO placeholders in package.yaml (repo, distribution, display_name, capabilities, task_tags, triggers)")
-    todos.append("Add at least one recipe under recipes/ and delete recipes/README_TODO.md")
+    if contract_class in ("analysis", "mixed"):
+        todos.append("Add WorkflowContract YAML under workflows/ for canonical multi-step analyses, or delete workflows/README_TODO.md")
+    todos.append("Add TemplateSpec YAML under templates/ only for reusable code skeletons, or delete templates/README_TODO.md")
     todos.append("Write skill.md (replace TODO sections)")
 
     if contract_class in ("grammar", "mixed"):

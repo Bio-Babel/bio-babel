@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="biobabel logo">
+  <title>biobabel</title>
+  <desc>A package contract card with symbol, workflow and idiom rows served to an AI agent — biobabel's read-only MCP contract layer.</desc>
+  <defs>
+    <linearGradient id="bb-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef2fb"/>
+      <stop offset="1" stop-color="#e3e9f5"/>
+    </linearGradient>
+    <linearGradient id="bb-edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="bb-head" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="bb-agent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .lbl { font-family: 'Segoe UI','Helvetica Neue',Arial,sans-serif; font-weight: 600; }
+    .wm  { font-family: 'Segoe UI','Helvetica Neue',Arial,sans-serif; }
+  </style>
+
+  <!-- badge -->
+  <rect x="10" y="10" width="180" height="180" rx="38" fill="url(#bb-bg)"
+        stroke="url(#bb-edge)" stroke-width="3" stroke-opacity="0.85"/>
+
+  <!-- contract card: the package's _biobabel/ contract biobabel serves -->
+  <rect x="26" y="37" width="92" height="80" rx="10" fill="#0f172a" fill-opacity="0.10"/>
+  <rect x="24" y="34" width="92" height="80" rx="10" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+  <path d="M24 44 Q24 34 34 34 L106 34 Q116 34 116 44 L116 56 L24 56 Z" fill="url(#bb-head)"/>
+  <rect x="31" y="39" width="9" height="9" rx="2" fill="#ffffff" fill-opacity="0.92"/>
+  <rect x="44" y="42" width="44" height="5" rx="2.5" fill="#ffffff" fill-opacity="0.55"/>
+
+  <!-- contract rows with concrete labels -->
+  <g>
+    <rect x="32" y="65" width="9" height="9" rx="2" fill="#3b82f6"/>
+    <text x="46" y="73" class="lbl" font-size="11" fill="#334155">symbol</text>
+    <rect x="32" y="83" width="9" height="9" rx="2" fill="#14b8a6"/>
+    <text x="46" y="91" class="lbl" font-size="11" fill="#334155">workflow</text>
+    <rect x="32" y="101" width="9" height="9" rx="2" fill="#8b5cf6"/>
+    <text x="46" y="109" class="lbl" font-size="11" fill="#334155">idiom</text>
+  </g>
+
+  <!-- served to the agent -->
+  <line x1="119" y1="74" x2="126" y2="74" stroke="#64748b" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="133,74 124,68 124,80" fill="#64748b"/>
+
+  <!-- AI agent node -->
+  <circle cx="153" cy="74" r="19" fill="url(#bb-agent)" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1.5"/>
+  <path d="M153 64 L155.1 71.9 L163 74 L155.1 76.1 L153 84 L150.9 76.1 L143 74 L150.9 71.9 Z" fill="#ffffff"/>
+  <path d="M169.5 61 L170.6 64.4 L174 65.5 L170.6 66.6 L169.5 70 L168.4 66.6 L165 65.5 L168.4 64.4 Z" fill="#ffffff" fill-opacity="0.85"/>
+
+  <!-- wordmark -->
+  <text x="100" y="150" text-anchor="middle" class="wm" font-size="27" font-weight="700" fill="#1e293b" letter-spacing="-0.5">biobabel</text>
+  <text x="100" y="167" text-anchor="middle" class="lbl" font-size="8.5" fill="#64748b" letter-spacing="1.4">MCP CONTRACT LAYER</text>
+</svg>

@@ -1,10 +1,4 @@
-"""Shared pytest fixtures: a synthetic Registry that doesn't need installed pkgs.
-
-The registry fixture mirrors what ``build_registry()`` would assemble under
-schema v2: it loads two manifests (one grammar, one analysis) and attaches a
-small set of in-process detectors so anti-pattern tests can run without
-going through entry-point discovery.
-"""
+"""Shared pytest fixtures for schema v1 contract tests."""
 
 from __future__ import annotations
 
@@ -20,22 +14,13 @@ from biobabel.manifest_api import (
     AntiPatternDetection,
     AntiPatternSpec,
     ConceptSpec,
-    FunctionContract,
     IdiomSpec,
-    MentalModel,
     PackageManifest,
-    Recipe,
-    TaskTrigger,
+    SymbolContract,
+    TemplateSpec,
     WorkflowContract,
     WorkflowStep,
 )
-
-# --- In-process detectors used by the grammar manifest's anti_patterns ----
-#
-# In real deployments these would live in rgrid-python's _biobabel/detectors.py
-# and be discovered via entry-points. For tests we wire them directly so the
-# fixture is self-contained and does not depend on the upstream package being
-# pip-installed.
 
 
 def _fake_for_loop_calls(tree: ast.AST, args: dict[str, Any]) -> list[DetectorMatch]:
@@ -82,12 +67,19 @@ def grammar_manifest() -> PackageManifest:
         display_name="grid_py",
         contract_class="grammar",
         tier=1,
-        type="build-on",
         maturity="beta",
         capabilities=["viewport-stack", "grob-tree"],
         task_tags=["new-plotting-package", "sub-region-drawing"],
-        triggers=[
-            TaskTrigger(intent="build a plotting package on top of grid", confidence=0.95),
+        triggers=["build a plotting package on top of grid"],
+        symbols=[
+            SymbolContract(
+                id="grid_py.grid_points",
+                import_path="grid_py.grid_points",
+                signature="grid_points(x, y, gp=None)",
+                purpose="Draw point markers in the current viewport.",
+                requires=["current viewport coordinates are appropriate for Unit inputs"],
+                examples=["grid_points(Unit(xs, 'native'), Unit(ys, 'native'))"],
+            )
         ],
         concepts=[
             ConceptSpec(
@@ -96,7 +88,7 @@ def grammar_manifest() -> PackageManifest:
                 category="drawing-context",
                 description="Rectangular region on a graphics device.",
                 invariants=["push and pop must balance"],
-                mental_model=MentalModel(general="stack of coordinate transforms"),
+                mental_model="stack of coordinate transforms",
             ),
         ],
         idioms=[
@@ -105,7 +97,7 @@ def grammar_manifest() -> PackageManifest:
                 name="Push-Draw-Pop",
                 applicable_to=["grid_py.Viewport"],
                 description="Standard sub-region drawing.",
-                code_template="push_viewport(...); grid_rect(); pop_viewport()",
+                code_template="push_viewport(vp); grid_rect(); pop_viewport()",
             ),
         ],
         anti_patterns=[
@@ -133,11 +125,12 @@ def grammar_manifest() -> PackageManifest:
                 correct_pattern="grid_py.try_finally_pop",
             ),
         ],
-        recipes=[
-            Recipe(
-                id="grid_py.basic_subplot",
-                path="recipes/basic_subplot.py",
-                description="Basic subplot",
+        templates=[
+            TemplateSpec(
+                id="grid_py.scatter_threshold_skeleton",
+                path="templates/scatter_threshold.py",
+                description="Skeleton for drawing points and threshold lines with native units.",
+                task_tags=["scatter-plot", "threshold-lines"],
             ),
         ],
     )
@@ -145,12 +138,6 @@ def grammar_manifest() -> PackageManifest:
 
 @pytest.fixture
 def analysis_manifest() -> PackageManifest:
-    # ``import_name="monocle3_py"`` is deliberately a fictitious alias rather
-    # than the real upstream ``monocle3``. test_skills.py's "skipped because
-    # no skill.md" path relies on ``importlib.util.find_spec(<import_name>)``
-    # returning None; renaming to the real ``monocle3`` would resolve to the
-    # installed package and break that test under any env where monocle3 is
-    # pip-installed.
     return PackageManifest(
         repo="https://github.com/Bio-Babel/Monocle3-python",
         distribution="monocle3-python",
@@ -158,57 +145,67 @@ def analysis_manifest() -> PackageManifest:
         display_name="monocle3",
         contract_class="analysis",
         tier=2,
-        type="domain",
         maturity="beta",
         task_tags=["pseudotime", "trajectory"],
-        triggers=[TaskTrigger(intent="pseudotime trajectory")],
-        functions=[
-            # Canonical flat-string shape (the form producers should adopt).
-            FunctionContract(
+        triggers=["pseudotime trajectory"],
+        symbols=[
+            SymbolContract(
                 id="monocle3.estimate_size_factors",
                 import_path="monocle3.estimate_size_factors",
-                execution_class="adata_mutation",
-                intent=["pseudotime trajectory"],
-                description="Compute per-cell size factors.",
-                writes=["obs.Size_Factor"],
-                next=["monocle3.preprocess_cds"],
+                signature="estimate_size_factors(adata)",
+                purpose="Compute per-cell size factors.",
+                mutates="AnnData",
+                writes=["adata.obs['Size_Factor']"],
+                related=["monocle3.preprocess_cds"],
             ),
-            # Exercises the legacy nested-dict absorption path *and* the
-            # X:<semantic> token, so a regression in either is caught here.
-            FunctionContract(
+            SymbolContract(
                 id="monocle3.preprocess_cds",
                 import_path="monocle3.preprocess_cds",
-                execution_class="adata_mutation",
-                intent=["pseudotime trajectory"],
-                requires={"adata": {"X": "raw_counts", "obs": ["Size_Factor"]}},
-                writes={"adata": {"obsm": ["X_pca"]}},
-                next=["monocle3.reduce_dimension"],
+                signature="preprocess_cds(adata, num_dim=50, ...)",
+                purpose="Normalize counts and compute PCA.",
+                mutates="AnnData",
+                requires=["adata.X contains raw counts", "adata.obs['Size_Factor'] exists"],
+                writes=["adata.obsm['X_pca']"],
+                related=["monocle3.reduce_dimension"],
             ),
-            FunctionContract(
+            SymbolContract(
                 id="monocle3.reduce_dimension",
                 import_path="monocle3.reduce_dimension",
-                execution_class="adata_mutation",
-                intent=["pseudotime trajectory"],
-                requires=["obsm.X_pca"],
-                writes=["obsm.X_umap"],
+                signature="reduce_dimension(adata, reduction_method='UMAP', ...)",
+                purpose="Compute low-dimensional embedding.",
+                mutates="AnnData",
+                requires=["adata.obsm['X_pca'] exists"],
+                writes=["adata.obsm['X_umap']"],
             ),
         ],
         workflows=[
             WorkflowContract(
                 id="monocle3.basic_trajectory",
-                description="Basic pseudotime trajectory.",
-                intent=["pseudotime trajectory"],
+                title="Basic pseudotime trajectory",
+                description="Reference Monocle3 pseudotime workflow.",
+                task_tags=["pseudotime", "trajectory"],
+                when_to_use=["User asks for Monocle3 pseudotime on AnnData."],
                 steps=[
-                    WorkflowStep(call="monocle3.estimate_size_factors", writes=["obs.Size_Factor"]),
                     WorkflowStep(
-                        call="monocle3.preprocess_cds",
-                        requires=["obs.Size_Factor"],
-                        writes=["obsm.X_pca"],
+                        symbol="monocle3.estimate_size_factors",
+                        purpose="Normalize library size.",
+                    ),
+                    WorkflowStep(
+                        symbol="monocle3.preprocess_cds",
+                        purpose="Create PCA state for downstream embedding.",
                     ),
                 ],
+                templates=["monocle3.basic_script"],
             )
         ],
-        recipes=[Recipe(id="monocle3.basic", path="recipes/basic.py")],
+        templates=[
+            TemplateSpec(
+                id="monocle3.basic_script",
+                path="templates/basic.py",
+                description="Adaptable script skeleton for a Monocle3 trajectory.",
+                task_tags=["pseudotime"],
+            )
+        ],
     )
 
 
@@ -227,8 +224,6 @@ def registry(grammar_manifest, analysis_manifest) -> Registry:
         distribution_version="0.1.0",
         manifest=analysis_manifest,
     )
-
-    # Detectors that the grammar manifest's anti_patterns reference.
     for did, fn in (
         ("rgrid.for_loop_calls", _fake_for_loop_calls),
         ("rgrid.unbalanced", _fake_unbalanced),
@@ -239,17 +234,18 @@ def registry(grammar_manifest, analysis_manifest) -> Registry:
             distribution_version="4.5.3.post4",
             fn=fn,
         )
-
     for d in reg.packages.values():
         m = d.manifest
-        for fn in m.functions:
-            reg._function_by_id[fn.id] = (d.import_name, fn)
-        for wf in m.workflows:
-            reg._workflow_by_id[wf.id] = (d.import_name, wf)
-        for c in m.concepts:
-            reg._concept_by_id[c.id] = (d.import_name, c)
-        for i in m.idioms:
-            reg._idiom_by_id[i.id] = (d.import_name, i)
-        for ap in m.anti_patterns:
-            reg._anti_pattern_by_id[ap.id] = (d.import_name, ap)
+        for symbol in m.symbols:
+            reg._symbol_by_id[symbol.id] = (d.import_name, symbol)
+        for workflow in m.workflows:
+            reg._workflow_by_id[workflow.id] = (d.import_name, workflow)
+        for template in m.templates:
+            reg._template_by_id[template.id] = (d.import_name, template)
+        for concept in m.concepts:
+            reg._concept_by_id[concept.id] = (d.import_name, concept)
+        for idiom in m.idioms:
+            reg._idiom_by_id[idiom.id] = (d.import_name, idiom)
+        for anti_pattern in m.anti_patterns:
+            reg._anti_pattern_by_id[anti_pattern.id] = (d.import_name, anti_pattern)
     return reg

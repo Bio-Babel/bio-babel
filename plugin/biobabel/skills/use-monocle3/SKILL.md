@@ -3,7 +3,7 @@ name: use-monocle3
 description: monocle3-python — single-cell trajectory & pseudotime (R Monocle3 port)
 contract_class: analysis
 package_version: 1.4.26
-biobabel_version: 0.2.0
+biobabel_version: 0.3.0
 generated_from_registry_commit: 9ca370c4d459b960aaef801a09b394fc6e5b9721454d09195bafe73c954da190
 ---
 
@@ -11,9 +11,9 @@ generated_from_registry_commit: 9ca370c4d459b960aaef801a09b394fc6e5b9721454d0919
 
 Python port of [cole-trapnell-lab/monocle3](https://github.com/cole-trapnell-lab/monocle3) (v1.4.26). Operates on `AnnData` instead of R's `CellDataSet` S4 — every other API choice mirrors R as closely as possible.
 
-## Mental model — the canonical 6-step pipeline
+## Mental model — the canonical 6-step workflow
 
-Monocle3 is a **state machine** over an AnnData. Each step writes specific slots and is consumed by the next:
+Monocle3 is an ordered workflow over an AnnData. Each step writes specific slots that later steps read:
 
 ```
 1. estimate_size_factors → obs.Size_Factor
@@ -24,7 +24,7 @@ Monocle3 is a **state machine** over an AnnData. Each step writes specific slots
 6. order_cells            → obs.pseudotime
 ```
 
-Skipping a step or running them out of order will fail loudly inside the function — biobabel's `check_prerequisites` catches it before the call.
+Skipping a step or running them out of order will fail loudly inside the function. Use `biobabel.describe_workflow` and `biobabel.describe_symbol` to inspect the required state before writing code.
 
 ## Invariants
 

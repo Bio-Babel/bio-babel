@@ -1,87 +1,67 @@
-"""Acceptance criteria tests that exercise the full pipe.
-
-Skipped in environments where the upstream Bio-Babel packages aren't
-installed. On a CI runner with `scales-python`, `gtable-python`,
-`rgrid-python`, `monocle3-python`, `ggplot2-python` installed, every test
-here must pass.
-"""
+"""Acceptance tests for installed schema-v1 Bio-Babel producer packages."""
 
 from __future__ import annotations
-
-import importlib.util
 
 import pytest
 
 from biobabel._registry.builder import build_registry
-from biobabel.mcp.server import build_server
+from biobabel.mcp.server import BiobabelMCPServer
 
 
-def _pkg_installed(name: str) -> bool:
-    try:
-        return importlib.util.find_spec(name) is not None
-    except (ImportError, ValueError):
-        return False
+def _server_with(*packages: str) -> BiobabelMCPServer:
+    reg = build_registry()
+    names = set(reg.packages)
+    missing = set(packages) - names
+    if missing:
+        details = "; ".join(f"{e.name}: {e.error}" for e in reg.errors[:5])
+        pytest.skip(
+            "schema-v1 producer contracts not installed for "
+            f"{sorted(missing)}. Discovery errors: {details}"
+        )
+    return BiobabelMCPServer(registry=reg)
 
 
-needs_ggplot2 = pytest.mark.skipif(
-    not _pkg_installed("ggplot2_py"),
-    reason="acceptance test needs ggplot2-python installed with its _biobabel/ contract",
-)
-needs_monocle3 = pytest.mark.skipif(
-    not _pkg_installed("monocle3"),
-    reason="acceptance test needs monocle3-python installed",
-)
-needs_grid_py = pytest.mark.skipif(
-    not _pkg_installed("grid_py"),
-    reason="acceptance test needs rgrid-python installed",
-)
-
-
-@needs_ggplot2
 def test_ac_ggplot2_describe_aes_includes_keyword_warning():
-    """ggplot2's `aes` symbol must surface the Python kwarg/string requirement
-    (this is the canonical bug LLM agents hit when porting R ggplot calls)."""
-    server = build_server()
+    server = _server_with("ggplot2_py")
     env = server.call("biobabel.describe_symbol", symbol_id="ggplot2_py.aes")
     assert env["ok"], env
-    fn = env["outputs"]["function"]
-    # The Python aes must signal: keyword-only + string column names
-    fix_text = " ".join(f["suggest"][0] for f in fn["failure_fixes"])
-    assert "keyword" in fix_text.lower() or "string" in fix_text.lower()
+    symbol = env["outputs"]["symbol"]
+    text = " ".join(
+        [
+            symbol.get("signature", ""),
+            symbol.get("description", ""),
+            " ".join(str(f) for f in symbol.get("failure_fixes", [])),
+        ]
+    )
+    assert "keyword" in text.lower() or "string" in text.lower()
 
 
-@needs_monocle3
-def test_ac4_monocle3_describe_symbol_full_contract():
-    """AC #4: describe_symbol('monocle3.preprocess_cds') returns full state-graph contract."""
-    server = build_server()
+def test_ac_monocle3_describe_symbol_contract():
+    server = _server_with("monocle3")
     env = server.call("biobabel.describe_symbol", symbol_id="monocle3.preprocess_cds")
     assert env["ok"], env
-    fn = env["outputs"]["function"]
-    assert fn["execution_class"] == "adata_mutation"
-    assert "Size_Factor" in str(fn["requires"])
-    assert "X_pca" in str(fn["writes"])
-    assert "monocle3.reduce_dimension" in fn["next"]
+    symbol = env["outputs"]["symbol"]
+    assert "Size_Factor" in str(symbol["requires"])
+    assert "X_pca" in str(symbol["writes"])
 
 
-@needs_monocle3
-def test_ac_plan_workflow_pseudotime():
-    """plan_workflow('pseudotime trajectory') resolves to monocle3.basic_trajectory and includes the canonical pipeline."""
-    server = build_server()
-    env = server.call("biobabel.plan_workflow", task="pseudotime trajectory")
-    assert env["ok"], env
-    assert env["outputs"]["source"] == "workflow_contract"
-    assert env["outputs"]["workflow_id"] == "monocle3.basic_trajectory"
-    step_calls = [s["call"] for s in env["outputs"]["steps"]]
-    # Canonical pipeline must end with learn_graph -> order_cells in this order.
-    assert "monocle3.learn_graph" in step_calls
-    assert "monocle3.order_cells" in step_calls
-    assert step_calls.index("monocle3.learn_graph") < step_calls.index("monocle3.order_cells")
+def test_ac_monocle3_workflow_is_describable_not_planned():
+    server = _server_with("monocle3")
+    listed = server.call("biobabel.list_workflows", package="monocle3", task_tag="pseudotime")
+    assert listed["ok"], listed
+    workflow_ids = {w["id"] for w in listed["outputs"]["workflows"]}
+    assert "monocle3.basic_trajectory" in workflow_ids
+
+    described = server.call("biobabel.describe_workflow", workflow_id="monocle3.basic_trajectory")
+    assert described["ok"], described
+    step_symbols = [s["symbol"] for s in described["outputs"]["workflow"]["steps"]]
+    assert "monocle3.learn_graph" in step_symbols
+    assert "monocle3.order_cells" in step_symbols
+    assert step_symbols.index("monocle3.learn_graph") < step_symbols.index("monocle3.order_cells")
 
 
-@needs_ggplot2
 def test_ggplot2_constant_inside_aes_is_flagged():
-    """Anti-pattern detector catches color='red' inside aes() — the cardinal ggplot bug."""
-    server = build_server()
+    server = _server_with("ggplot2_py")
     code = """
 from ggplot2_py import ggplot, aes, geom_point
 from ggplot2_py.datasets import mpg
@@ -92,10 +72,8 @@ p = ggplot(mpg, aes(x="displ", y="hwy")) + geom_point(aes(color="red"))
     assert "ggplot2_py.constant_inside_aes" in ids
 
 
-@needs_grid_py
 def test_grid_py_grob_in_loop_is_flagged():
-    """Anti-pattern detector catches grid_draw() in a for-loop."""
-    server = build_server()
+    server = _server_with("grid_py")
     code = """
 from grid_py import rect_grob, Unit, grid_draw
 for i in range(10):
@@ -106,11 +84,10 @@ for i in range(10):
     assert "grid_py.grob_in_loop" in ids
 
 
-def test_registry_has_all_5_onboarded_packages():
-    """When all 5 currently-onboarded Bio-Babel packages are installed, biobabel sees them."""
-    if not all(_pkg_installed(n) for n in ("scales", "grid_py", "gtable_py", "monocle3", "ggplot2_py")):
-        pytest.skip("requires all 5 packages installed")
+def test_registry_has_onboarded_schema_v1_packages_when_installed():
     reg = build_registry()
-    names = {d.import_name for d in reg.list_packages()}
-    assert {"scales", "grid_py", "gtable_py", "monocle3", "ggplot2_py"} <= names
+    required = {"scales", "grid_py", "gtable_py", "monocle3", "ggplot2_py"}
+    if not required <= set(reg.packages):
+        details = "; ".join(f"{e.name}: {e.error}" for e in reg.errors[:5])
+        pytest.skip(f"schema-v1 producer contracts not installed. Discovery errors: {details}")
     assert not reg.errors, f"unexpected discovery errors: {reg.errors}"
