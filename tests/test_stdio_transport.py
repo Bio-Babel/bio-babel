@@ -38,6 +38,20 @@ def test_tools_list_returns_every_wired_tool(registry):
     assert "biobabel.run_code" not in names
 
 
+def test_tools_list_advertises_real_input_schemas(registry):
+    server = BiobabelMCPServer(registry=registry)
+    responses = _drive(server, {"jsonrpc": "2.0", "id": 6, "method": "tools/list"})
+    schemas = {t["name"]: t["inputSchema"] for t in responses[0]["result"]["tools"]}
+
+    describe_symbol = schemas["biobabel.describe_symbol"]
+    assert describe_symbol["properties"] == {"symbol_id": {"type": "string"}}
+    assert describe_symbol["required"] == ["symbol_id"]
+
+    # No tool keeps the old empty-but-permissive placeholder schema.
+    assert all(s["additionalProperties"] is False for s in schemas.values())
+    assert all("properties" in s for s in schemas.values())
+
+
 def test_tools_call_returns_single_result_envelope(registry):
     server = BiobabelMCPServer(registry=registry)
     responses = _drive(server, {

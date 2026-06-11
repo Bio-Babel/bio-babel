@@ -6,13 +6,14 @@ from typing import Any
 
 from biobabel._registry.builder import Registry
 from biobabel._registry.search import search_contracts as _search_contracts
+from biobabel.manifest_api import ContractClass
 from biobabel.mcp.envelope import error, success
 
 
 def list_packages(
     registry: Registry,
     *,
-    contract_class: str | None = None,
+    contract_class: ContractClass | None = None,
     tier: int | None = None,
     maturity: str | None = None,
 ) -> dict[str, Any]:

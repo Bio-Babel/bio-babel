@@ -72,7 +72,7 @@ class StdioTransport:
                 {
                     "name": name,
                     "description": self.server.tool(name).description,
-                    "inputSchema": {"type": "object", "properties": {}, "additionalProperties": True},
+                    "inputSchema": self.server.tool(name).input_schema,
                 }
                 for name in self.server.tool_names
             ]

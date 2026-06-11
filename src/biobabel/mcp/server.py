@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import functools
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from biobabel._registry.builder import Registry, build_registry
+from biobabel.mcp.schema import build_input_schema
 from biobabel.mcp.tools import concept, discovery, meta, validation
 
 ToolHandler = Callable[..., dict[str, Any]]
@@ -18,6 +20,7 @@ class ToolSpec:
     group: str
     handler: ToolHandler
     description: str
+    input_schema: dict[str, Any]
 
 
 class BiobabelMCPServer:
@@ -28,83 +31,84 @@ class BiobabelMCPServer:
 
     def _wire(self) -> None:
         reg = self.registry
+        bind = functools.partial  # pre-bind the registry; signature stays introspectable
 
         self._add(
             "biobabel.list_packages",
             "contracts",
-            lambda **kw: discovery.list_packages(reg, **kw),
+            bind(discovery.list_packages, reg),
             "List registered Bio-Babel packages with agent ranking signals",
         )
         self._add(
             "biobabel.describe_package",
             "contracts",
-            lambda **kw: discovery.describe_package(reg, **kw),
+            bind(discovery.describe_package, reg),
             "Return the full package manifest",
         )
         self._add(
             "biobabel.search_contracts",
             "contracts",
-            lambda **kw: discovery.search_contracts(reg, **kw),
+            bind(discovery.search_contracts, reg),
             "Lexical search over symbols, workflows, templates, concepts, and idioms",
         )
         self._add(
             "biobabel.list_workflows",
             "contracts",
-            lambda **kw: discovery.list_workflows(reg, **kw),
+            bind(discovery.list_workflows, reg),
             "List reference workflows; does not choose a plan",
         )
         self._add(
             "biobabel.describe_workflow",
             "contracts",
-            lambda **kw: discovery.describe_workflow(reg, **kw),
+            bind(discovery.describe_workflow, reg),
             "Describe one reference workflow",
         )
         self._add(
             "biobabel.list_symbols",
             "contracts",
-            lambda **kw: discovery.list_symbols(reg, **kw),
+            bind(discovery.list_symbols, reg),
             "List callable/class/constant symbol contracts",
         )
         self._add(
             "biobabel.describe_symbol",
             "contracts",
-            lambda **kw: discovery.describe_symbol(reg, **kw),
+            bind(discovery.describe_symbol, reg),
             "Describe one symbol contract with exact calling guidance",
         )
         self._add(
             "biobabel.list_templates",
             "contracts",
-            lambda **kw: discovery.list_templates(reg, **kw),
+            bind(discovery.list_templates, reg),
             "List reusable script/function templates",
         )
         self._add(
             "biobabel.describe_template",
             "contracts",
-            lambda **kw: discovery.describe_template(reg, **kw),
+            bind(discovery.describe_template, reg),
             "Describe one reusable template",
         )
         self._add(
             "biobabel.describe_concept",
             "concept",
-            lambda **kw: concept.describe_concept(reg, **kw),
+            bind(concept.describe_concept, reg),
             "Describe one conceptual invariant",
         )
         self._add(
             "biobabel.list_idioms",
             "concept",
-            lambda **kw: concept.list_idioms(reg, **kw),
+            bind(concept.list_idioms, reg),
             "List compositional idioms",
         )
         self._add(
             "biobabel.describe_idiom",
             "concept",
-            lambda **kw: concept.describe_idiom(reg, **kw),
+            bind(concept.describe_idiom, reg),
             "Describe one compositional idiom with code template",
         )
         self._add(
             "biobabel.check_code",
             "validation",
-            lambda **kw: validation.check_code(reg, **kw),
+            bind(validation.check_code, reg),
             "Semantic lint: AST policy scan plus package anti-patterns",
         )
         self._add(
@@ -116,7 +120,7 @@ class BiobabelMCPServer:
         self._add(
             "biobabel.health",
             "meta",
-            lambda **kw: meta.health(reg),
+            bind(meta.health, reg),
             "Registry health snapshot",
         )
 
@@ -132,6 +136,7 @@ class BiobabelMCPServer:
             group=group,
             handler=handler,
             description=description,
+            input_schema=build_input_schema(handler),
         )
 
     @property
