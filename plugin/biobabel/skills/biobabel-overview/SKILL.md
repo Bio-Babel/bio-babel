@@ -1,6 +1,6 @@
 ---
 name: biobabel-overview
-description: 15 read-only MCP tools for Bio-Babel — discover exact package contracts and validate snippets. Read this first when the user mentions an R bioinformatics package or a Bio-Babel name.
+description: 16 read-only MCP tools for Bio-Babel — discover exact package contracts and validate snippets. Read this first when the user mentions an R bioinformatics package or a Bio-Babel name.
 biobabel_version: 0.3.0
 ---
 
@@ -17,6 +17,7 @@ Pick the route by what the user is doing:
 | "run pseudotime / trajectory / monocle2py / monocle3 / clustering" | `biobabel.search_contracts` → `biobabel.list_workflows` / `describe_workflow` → `describe_symbol` for exact calls |
 | "draw / plot / custom geom / grid / ggplot2 / pheatmap"          | `biobabel.search_contracts` → `biobabel.describe_symbol` + `describe_concept` + `list_idioms` |
 | pastes R syntax (`library(`, `<-`, `%>%`)                        | look up the Python contract with `describe_symbol` / `describe_concept` / `list_idioms` |
+| code you ran raised an error / traceback                         | `biobabel.match_failure(error_text=...)` → curated fix, then `describe_symbol` for the suggested call |
 | "add biobabel support to my package"                             | use the maintainer CLI: `biobabel new contract --pkg <import_name>` |
 | review a Bio-Babel R-port PR                                     | inspect `_biobabel/` contracts and run the package tests directly |
 
@@ -27,6 +28,7 @@ Pick the route by what the user is doing:
 3. Before using an unfamiliar workflow step, call `biobabel.describe_symbol` for the exact signature, parameters, writes, and failure fixes.
 4. Run `biobabel.check_code` on non-trivial snippets before showing or executing them.
 5. biobabel never executes code — it is a read-only contract layer. Run snippets with your own tools (terminal / python).
+6. When code you ran raises, pass the traceback to `biobabel.match_failure` before guessing a fix — it returns the producer's curated failure fix.
 
 ## Discovering more
 
@@ -34,6 +36,7 @@ Pick the route by what the user is doing:
 - `biobabel.search_contracts(query=...)` — find symbols, workflows, templates, concepts, and idioms
 - `biobabel.list_workflows(package=X)` / `biobabel.describe_workflow(workflow_id=...)` — reference workflows
 - `biobabel.list_symbols(package=X)` / `biobabel.describe_symbol(symbol_id=...)` — exact callable contracts
+- `biobabel.match_failure(error_text=...)` — map a runtime traceback to the producer's curated failure fixes
 - `biobabel.list_tools()` — full MCP tool list
 - `biobabel.list_idioms(package=X)` — Class B grammar patterns
 - `biobabel.health()` — discovery errors and indexed contract counts

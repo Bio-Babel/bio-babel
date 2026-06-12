@@ -7,7 +7,8 @@ from biobabel.mcp.server import BiobabelMCPServer
 
 def test_server_wires_contract_server_tools(registry):
     server = BiobabelMCPServer(registry=registry)
-    assert server.tool_count == 15
+    assert server.tool_count == 16
+    assert "biobabel.match_failure" in server.tool_names
     assert "biobabel.plan_workflow" not in server.tool_names
     assert "biobabel.check_prerequisites" not in server.tool_names
     assert "biobabel.load_adata" not in server.tool_names
@@ -90,7 +91,7 @@ def test_list_tools_returns_all(registry):
     server = BiobabelMCPServer(registry=registry)
     env = server.call("biobabel.list_tools")
     assert env["ok"]
-    assert len(env["outputs"]["tools"]) == 15
+    assert len(env["outputs"]["tools"]) == 16
 
 
 def test_health(registry):

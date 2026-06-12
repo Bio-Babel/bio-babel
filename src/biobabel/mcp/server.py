@@ -112,6 +112,12 @@ class BiobabelMCPServer:
             "Semantic lint: AST policy scan plus package anti-patterns",
         )
         self._add(
+            "biobabel.match_failure",
+            "validation",
+            bind(validation.match_failure, reg),
+            "Map a runtime error/traceback to curated failure fixes and anti-patterns",
+        )
+        self._add(
             "biobabel.list_tools",
             "meta",
             lambda **kw: meta.list_tools(list(self._tools)),

@@ -12,7 +12,7 @@
 | **Producer side** — upstream package | Bio-Babel maintainers (you) | a `_biobabel/` directory with YAML contracts, plus a Python entry-point declaration |
 | **Consumer side** — end user / IDE  | end users running `biobabel install --target X` | wiring that points their MCP-aware IDE (Claude Code, Cursor, Continue, Codex) at the local `biobabel-mcp` server |
 
-biobabel sits in the middle. At runtime it discovers the producer-side contracts via Python entry points and exposes them to the consumer side as 15 read-only MCP tools for contract discovery, snippet linting, and health metadata. biobabel does not execute code — running it is the calling agent's job.
+biobabel sits in the middle. At runtime it discovers the producer-side contracts via Python entry points and exposes them to the consumer side as 16 read-only MCP tools for contract discovery, snippet linting, and health metadata. biobabel does not execute code — running it is the calling agent's job.
 
 ```
 ┌──────────────────────────────────┐         ┌──────────────────────────────────┐
@@ -271,7 +271,7 @@ biobabel/
 │   ├── _concept/               ← idiom search + anti-pattern AST detector + check_code static policy
 │   ├── _retrofit/              ← `biobabel new contract` — introspect an existing pkg, emit _biobabel/ skeleton
 │   ├── _exporters/             ← biobabel install --target X
-│   ├── mcp/                    ← 15 read-only tools, JSON-RPC stdio transport
+│   ├── mcp/                    ← 16 read-only tools, JSON-RPC stdio transport
 │   └── cli/                    ← biobabel CLI (click)
 └── tests/                      ← unit tests covering all of the above
 ```

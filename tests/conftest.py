@@ -14,6 +14,7 @@ from biobabel.manifest_api import (
     AntiPatternDetection,
     AntiPatternSpec,
     ConceptSpec,
+    FailureFix,
     IdiomSpec,
     PackageManifest,
     SymbolContract,
@@ -166,6 +167,19 @@ def analysis_manifest() -> PackageManifest:
                 mutates="AnnData",
                 requires=["adata.X contains raw counts", "adata.obs['Size_Factor'] exists"],
                 writes=["adata.obsm['X_pca']"],
+                failure_fixes=[
+                    FailureFix(
+                        when=(
+                            "KeyError: 'Size_Factor' — preprocess_cds reads "
+                            "adata.obs['Size_Factor'] but size factors were never computed"
+                        ),
+                        suggest=["monocle3.estimate_size_factors"],
+                        explanation=(
+                            "Run estimate_size_factors before preprocess_cds so the "
+                            "Size_Factor column exists."
+                        ),
+                    )
+                ],
                 related=["monocle3.reduce_dimension"],
             ),
             SymbolContract(
