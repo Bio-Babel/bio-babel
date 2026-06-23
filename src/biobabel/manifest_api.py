@@ -182,12 +182,7 @@ class PackageManifest(_Frozen):
     maturity: Literal["alpha", "beta", "stable"] = "alpha"
 
     r_package: RPackageRef | None = None
-    capabilities: list[str] = Field(default_factory=list)
-    domain_tags: list[str] = Field(default_factory=list)
-    task_tags: list[str] = Field(default_factory=list)
-    foundation: list[str] = Field(default_factory=list)
-    triggers: list[str] = Field(default_factory=list)
-    not_when: list[str] = Field(default_factory=list)
+    foundation: list[str] = Field(default_factory=list)  # dependency facts (e.g. ggplot2_py -> grid_py), kept
 
     symbols: list[SymbolContract] = Field(default_factory=list)
     workflows: list[WorkflowContract] = Field(default_factory=list)

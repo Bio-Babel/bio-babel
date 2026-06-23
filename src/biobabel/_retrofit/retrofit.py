@@ -501,12 +501,7 @@ def _render_package_yaml(
         "contract_class": contract_class,
         "tier": 3,
         "maturity": "alpha",
-        "capabilities": [],
-        "domain_tags": [],
-        "task_tags": [],
         "foundation": [],
-        "triggers": [],
-        "not_when": [],
     }
     if r_package:
         data["r_package"] = {
@@ -613,7 +608,8 @@ def _render_symbol_yaml(s: SymbolInfo, import_name: str) -> str:
     }
     header = (
         f"# Auto-generated stub for {s.qual_name}.\n"
-        "# Review and fill: purpose, mutates, requires, writes, examples, failure_fixes, related.\n"
+        "# Review and fill: purpose, mutates, requires, "
+        "writes, examples, failure_fixes, related.\n"
     )
     return header + yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
 
@@ -689,7 +685,7 @@ def _build_todos(
             f"Fill the top-{len(candidates)} symbols/*.yaml (purpose / mutates / requires / writes / examples): {names}"
         )
 
-    todos.append("Replace TODO placeholders in package.yaml (repo, distribution, display_name, capabilities, task_tags, triggers)")
+    todos.append("Replace TODO placeholders in package.yaml (repo, distribution, display_name)")
     if contract_class in ("analysis", "mixed"):
         todos.append("Add WorkflowContract YAML under workflows/ for canonical multi-step analyses, or delete workflows/README_TODO.md")
     todos.append("Add TemplateSpec YAML under templates/ only for reusable code skeletons, or delete templates/README_TODO.md")

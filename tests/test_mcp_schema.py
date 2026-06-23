@@ -84,6 +84,7 @@ def test_wired_tools_advertise_real_schemas(registry):
     assert list_packages["properties"]["tier"] == {"type": "integer"}
     assert "required" not in list_packages  # every filter is optional
 
-    # meta tools take no agent arguments
-    assert server.tool("biobabel.health").input_schema["properties"] == {}
-    assert server.tool("biobabel.list_tools").input_schema["properties"] == {}
+    # list_symbols exposes the Tier-1 discovery filter (query) to the agent
+    list_symbols = server.tool("biobabel.list_symbols").input_schema
+    assert "query" in list_symbols["properties"]
+    assert "required" not in list_symbols  # package / kind / query / limit all optional

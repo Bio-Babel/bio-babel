@@ -18,7 +18,7 @@ The `generated_from_registry_commit` field lets CI assert the skills are
 in sync with the contracts (final_plan §18.3 drift rule).
 
 In addition, a top-level `biobabel-overview/SKILL.md` is always emitted —
-hand-curated content explaining the 16 read-only MCP tools and the two-class framework.
+hand-curated content explaining the 15 read-only MCP tools and the two-class framework.
 """
 
 from __future__ import annotations
@@ -131,7 +131,7 @@ def _render_overview(registry: Registry) -> str:
     lines = [
         "---",
         "name: biobabel-overview",
-        "description: 16 read-only MCP tools for Bio-Babel — discover exact package contracts and validate snippets. Read this first when the user mentions an R bioinformatics package or a Bio-Babel name.",
+        "description: 15 read-only MCP tools for Bio-Babel — discover exact package contracts and validate snippets. Read this first when the user mentions an R bioinformatics package or a Bio-Babel name.",
         f"biobabel_version: {BIOBABEL_VERSION}",
         "---",
         "",
@@ -154,32 +154,26 @@ def _render_overview(registry: Registry) -> str:
         "",
         "| User says                                                        | Reach for                                            |",
         "|------------------------------------------------------------------|------------------------------------------------------|",
-        "| \"run pseudotime / trajectory / monocle2py / monocle3 / clustering\" | `biobabel.search_contracts` → `biobabel.list_workflows` / `describe_workflow` → `describe_symbol` for exact calls |",
-        "| \"draw / plot / custom geom / grid / ggplot2 / pheatmap\"          | `biobabel.search_contracts` → `biobabel.describe_symbol` + `describe_concept` + `list_idioms` |",
+        "| \"run pseudotime / trajectory / monocle2py / monocle3 / clustering\" | `biobabel.list_packages` / `list_symbols` → `biobabel.list_workflows` / `describe_workflow` → `describe_symbol` for exact calls |",
+        "| \"draw / plot / custom geom / grid / ggplot2 / pheatmap\"          | `biobabel.list_symbols` → `biobabel.describe_symbol` + `describe_concept` + `list_idioms` |",
         "| pastes R syntax (`library(`, `<-`, `%>%`)                        | look up the Python contract with `describe_symbol` / `describe_concept` / `list_idioms` |",
         "| \"add biobabel support to my package\"                             | use the maintainer CLI: `biobabel new contract --pkg <import_name>` |",
         "| review a Bio-Babel R-port PR                                     | inspect `_biobabel/` contracts and run the package tests directly |",
-        "| code you ran raised an error / traceback                         | `biobabel.match_failure(error_text=...)` → curated fix, then `describe_symbol` |",
         "",
         "## Hard rules",
         "",
         "1. Never echo R syntax as Python. Look up the Python-side contract instead of translating line-by-line.",
         "2. The agent owns intent understanding and planning. biobabel only returns exact package facts and reference workflows.",
-        "3. Before using an unfamiliar workflow step, call `biobabel.describe_symbol` for the exact signature, parameters, writes, and failure fixes.",
-        "4. Run `biobabel.check_code` on non-trivial snippets before showing or executing them.",
+        "3. Before writing code for a package, search its API: `biobabel.list_symbols(package=X, query=\"<intent>\")` then `biobabel.describe_symbol`. But these ports' runtime failures are usually wrong *composition* (viewport / renderer / grob ordering), NOT wrong names — so also pull the relevant `biobabel.list_idioms` / `describe_concept` for the correct pattern.",
+        "4. Run `biobabel.check_code` on non-trivial snippets before showing or executing them — it catches the composition anti-patterns that a correct-looking call still trips on.",
         "5. biobabel never executes code — it is a read-only contract layer. Run snippets with your own tools (terminal / python).",
-        "6. When code you ran raises, pass the traceback to `biobabel.match_failure` before guessing a fix — it returns the producer's curated failure fix.",
         "",
         "## Discovering more",
         "",
         "- `biobabel.list_packages()` — registry snapshot",
-        "- `biobabel.search_contracts(query=...)` — find symbols, workflows, templates, concepts, and idioms",
         "- `biobabel.list_workflows(package=X)` / `biobabel.describe_workflow(workflow_id=...)` — reference workflows",
-        "- `biobabel.list_symbols(package=X)` / `biobabel.describe_symbol(symbol_id=...)` — exact callable contracts",
-        "- `biobabel.match_failure(error_text=...)` — map a runtime traceback to the producer's curated failure fixes",
-        "- `biobabel.list_tools()` — full MCP tool list",
+        "- `biobabel.list_symbols(package=X, query=...)` / `biobabel.describe_symbol(symbol_id=...)` — search + read exact callable contracts",
         "- `biobabel.list_idioms(package=X)` — Class B grammar patterns",
-        "- `biobabel.health()` — discovery errors and indexed contract counts",
         "",
     ])
     return "\n".join(lines)

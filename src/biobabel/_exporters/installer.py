@@ -511,8 +511,8 @@ pheatmap, ComplexHeatmap, grid_py, gtable, scales, etc., reach for the
 biobabel.* MCP tools first instead of guessing the Python API from R memory.
 
 Key tools:
-- biobabel.list_packages()         — every registered package with triggers/tags/capabilities/not_when; rank yourself
-- biobabel.search_contracts(query) — find relevant symbols, workflows, templates, concepts, and idioms
+- biobabel.list_packages()         — every registered package (import name, class, tier, foundation)
+- biobabel.list_symbols(package, query=...) — search callable/class/constant symbol contracts
 - biobabel.list_workflows(package) / describe_workflow(id) — reference multi-step workflows
 - biobabel.describe_concept(id)    — Class B mental model (grid_py.Viewport, ...)
 - biobabel.list_idioms(package)    — idiomatic patterns

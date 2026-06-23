@@ -1,6 +1,6 @@
 ---
 name: biobabel-overview
-description: 16 read-only MCP tools for Bio-Babel — discover exact package contracts and validate snippets. Read this first when the user mentions an R bioinformatics package or a Bio-Babel name.
+description: 15 read-only MCP tools for Bio-Babel — discover exact package contracts and validate snippets. Read this first when the user mentions an R bioinformatics package or a Bio-Babel name.
 biobabel_version: 0.3.0
 ---
 
@@ -14,8 +14,8 @@ Pick the route by what the user is doing:
 
 | User says                                                        | Reach for                                            |
 |------------------------------------------------------------------|------------------------------------------------------|
-| "run pseudotime / trajectory / monocle2py / monocle3 / clustering" | `biobabel.search_contracts` → `biobabel.list_workflows` / `describe_workflow` → `describe_symbol` for exact calls |
-| "draw / plot / custom geom / grid / ggplot2 / pheatmap"          | `biobabel.search_contracts` → `biobabel.describe_symbol` + `describe_concept` + `list_idioms` |
+| "run pseudotime / trajectory / monocle2py / monocle3 / clustering" | `biobabel.list_packages` / `list_symbols` → `biobabel.list_workflows` / `describe_workflow` → `describe_symbol` for exact calls |
+| "draw / plot / custom geom / grid / ggplot2 / pheatmap"          | `biobabel.list_symbols` → `biobabel.describe_symbol` + `describe_concept` + `list_idioms` |
 | pastes R syntax (`library(`, `<-`, `%>%`)                        | look up the Python contract with `describe_symbol` / `describe_concept` / `list_idioms` |
 | code you ran raised an error / traceback                         | `biobabel.match_failure(error_text=...)` → curated fix, then `describe_symbol` for the suggested call |
 | "add biobabel support to my package"                             | use the maintainer CLI: `biobabel new contract --pkg <import_name>` |
@@ -33,7 +33,6 @@ Pick the route by what the user is doing:
 ## Discovering more
 
 - `biobabel.list_packages()` — registry snapshot
-- `biobabel.search_contracts(query=...)` — find symbols, workflows, templates, concepts, and idioms
 - `biobabel.list_workflows(package=X)` / `biobabel.describe_workflow(workflow_id=...)` — reference workflows
 - `biobabel.list_symbols(package=X)` / `biobabel.describe_symbol(symbol_id=...)` — exact callable contracts
 - `biobabel.match_failure(error_text=...)` — map a runtime traceback to the producer's curated failure fixes

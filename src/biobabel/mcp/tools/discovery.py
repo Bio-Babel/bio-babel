@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from biobabel._registry.builder import Registry
-from biobabel._registry.search import search_contracts as _search_contracts
 from biobabel.manifest_api import ContractClass
 from biobabel.mcp.envelope import error, success
 
@@ -29,11 +28,6 @@ def list_packages(
                 "tier": m.tier,
                 "maturity": m.maturity,
                 "display_name": m.display_name,
-                "triggers": list(m.triggers),
-                "task_tags": list(m.task_tags),
-                "capabilities": list(m.capabilities),
-                "domain_tags": list(m.domain_tags),
-                "not_when": list(m.not_when),
                 "foundation": list(m.foundation),
             }
         )
@@ -57,25 +51,6 @@ def describe_package(registry: Registry, *, import_name: str) -> dict[str, Any]:
         summary=f"{d.manifest.display_name} ({d.manifest.contract_class})",
         outputs={"manifest": d.manifest.model_dump(mode="json")},
     )
-
-
-def search_contracts(
-    registry: Registry,
-    *,
-    query: str,
-    package: str | None = None,
-    kinds: list[str] | None = None,
-) -> dict[str, Any]:
-    if not query.strip():
-        return error("biobabel.search_contracts", error_code="empty_query", message="query must be non-empty")
-    try:
-        if kinds is None:
-            hits = _search_contracts(registry, query, package=package)
-        else:
-            hits = _search_contracts(registry, query, package=package, kinds=kinds)
-    except ValueError as exc:
-        return error("biobabel.search_contracts", error_code="bad_kinds", message=str(exc))
-    return success("biobabel.search_contracts", summary=f"{len(hits)} hit(s)", outputs={"hits": hits})
 
 
 def list_workflows(registry: Registry, *, package: str | None = None, task_tag: str | None = None) -> dict[str, Any]:
@@ -111,10 +86,24 @@ def describe_workflow(registry: Registry, *, workflow_id: str) -> dict[str, Any]
     )
 
 
-def list_symbols(registry: Registry, *, package: str | None = None, kind: str | None = None) -> dict[str, Any]:
+def list_symbols(
+    registry: Registry,
+    *,
+    package: str | None = None,
+    kind: str | None = None,
+    query: str | None = None,
+    limit: int = 40,
+) -> dict[str, Any]:
+    """Find symbol contracts. With Tier-1 covering ~1.2k symbols, a bare list is
+    a context bomb, so `query` does a case-insensitive substring match over
+    id/signature/summary (the registry-lookup pattern) and `limit` caps the
+    rows. Narrow with `query=` before reading; use `describe_symbol` for one."""
+    q = (query or "").strip().lower()
     rows = []
     for pkg, symbol in registry.list_symbols(package=package):
         if kind and symbol.kind != kind:
+            continue
+        if q and q not in f"{symbol.id}\n{symbol.signature}\n{symbol.description or symbol.purpose}".lower():
             continue
         rows.append(
             {
@@ -125,7 +114,14 @@ def list_symbols(registry: Registry, *, package: str | None = None, kind: str | 
                 "summary": symbol.description or symbol.purpose,
             }
         )
-    return success("biobabel.list_symbols", summary=f"{len(rows)} symbol(s)", outputs={"symbols": rows})
+    if q:  # exact name hits first, so the limit keeps the most relevant rows
+        rows.sort(key=lambda r: 0 if q in r["id"].lower() else 1)
+    total = len(rows)
+    rows = rows[: max(1, limit)]
+    note = f"{total} symbol(s)"
+    if total > len(rows):
+        note += f"; showing {len(rows)} — narrow with query= or raise limit="
+    return success("biobabel.list_symbols", summary=note, outputs={"symbols": rows, "total": total})
 
 
 def describe_symbol(registry: Registry, *, symbol_id: str) -> dict[str, Any]:

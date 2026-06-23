@@ -7,8 +7,11 @@ from biobabel.mcp.server import BiobabelMCPServer
 
 def test_server_wires_contract_server_tools(registry):
     server = BiobabelMCPServer(registry=registry)
-    assert server.tool_count == 16
-    assert "biobabel.match_failure" in server.tool_names
+    assert server.tool_count == 12
+    assert "biobabel.match_failure" not in server.tool_names
+    assert "biobabel.list_tools" not in server.tool_names
+    assert "biobabel.health" not in server.tool_names
+    assert "biobabel.search_contracts" not in server.tool_names
     assert "biobabel.plan_workflow" not in server.tool_names
     assert "biobabel.check_prerequisites" not in server.tool_names
     assert "biobabel.load_adata" not in server.tool_names
@@ -17,22 +20,28 @@ def test_server_wires_contract_server_tools(registry):
     assert "biobabel.run_code" not in server.tool_names
 
 
-def test_list_packages_envelope_surfaces_agent_ranking_signals(registry):
+def test_list_packages_envelope_has_no_routing_fields(registry):
     server = BiobabelMCPServer(registry=registry)
     env = server.call("biobabel.list_packages")
     assert env["ok"]
     packages = env["outputs"]["packages"]
     assert {p["import_name"] for p in packages} >= {"grid_py", "monocle3_py"}
     sample = packages[0]
-    for field in ("triggers", "task_tags", "capabilities", "domain_tags", "not_when", "foundation"):
+    # The retired routing/selection signals must be gone from the surface.
+    for field in ("triggers", "task_tags", "capabilities", "domain_tags", "not_when"):
+        assert field not in sample
+    # The retained, precise fields stay.
+    for field in (
+        "import_name",
+        "distribution",
+        "version",
+        "contract_class",
+        "tier",
+        "maturity",
+        "display_name",
+        "foundation",
+    ):
         assert field in sample
-
-
-def test_search_contracts_tool(registry):
-    server = BiobabelMCPServer(registry=registry)
-    env = server.call("biobabel.search_contracts", query="pseudotime size factors")
-    assert env["ok"]
-    assert any(h["id"] == "monocle3.estimate_size_factors" for h in env["outputs"]["hits"])
 
 
 def test_workflow_and_symbol_lookup(registry):
@@ -85,18 +94,3 @@ def test_unknown_tool_returns_error_envelope(registry):
     env = server.call("biobabel.no_such_tool")
     assert env["ok"] is False
     assert env["error_code"] == "unknown_tool"
-
-
-def test_list_tools_returns_all(registry):
-    server = BiobabelMCPServer(registry=registry)
-    env = server.call("biobabel.list_tools")
-    assert env["ok"]
-    assert len(env["outputs"]["tools"]) == 16
-
-
-def test_health(registry):
-    server = BiobabelMCPServer(registry=registry)
-    env = server.call("biobabel.health")
-    assert env["ok"]
-    assert env["outputs"]["packages"] == 2
-    assert env["outputs"]["symbols"] >= 1

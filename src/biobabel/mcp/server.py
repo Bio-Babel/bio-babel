@@ -9,7 +9,7 @@ from typing import Any
 
 from biobabel._registry.builder import Registry, build_registry
 from biobabel.mcp.schema import build_input_schema
-from biobabel.mcp.tools import concept, discovery, meta, validation
+from biobabel.mcp.tools import concept, discovery, validation
 
 ToolHandler = Callable[..., dict[str, Any]]
 
@@ -37,19 +37,13 @@ class BiobabelMCPServer:
             "biobabel.list_packages",
             "contracts",
             bind(discovery.list_packages, reg),
-            "List registered Bio-Babel packages with agent ranking signals",
+            "List registered Bio-Babel packages",
         )
         self._add(
             "biobabel.describe_package",
             "contracts",
             bind(discovery.describe_package, reg),
             "Return the full package manifest",
-        )
-        self._add(
-            "biobabel.search_contracts",
-            "contracts",
-            bind(discovery.search_contracts, reg),
-            "Lexical search over symbols, workflows, templates, concepts, and idioms",
         )
         self._add(
             "biobabel.list_workflows",
@@ -110,24 +104,6 @@ class BiobabelMCPServer:
             "validation",
             bind(validation.check_code, reg),
             "Semantic lint: AST policy scan plus package anti-patterns",
-        )
-        self._add(
-            "biobabel.match_failure",
-            "validation",
-            bind(validation.match_failure, reg),
-            "Map a runtime error/traceback to curated failure fixes and anti-patterns",
-        )
-        self._add(
-            "biobabel.list_tools",
-            "meta",
-            lambda **kw: meta.list_tools(list(self._tools)),
-            "List all biobabel MCP tools",
-        )
-        self._add(
-            "biobabel.health",
-            "meta",
-            bind(meta.health, reg),
-            "Registry health snapshot",
         )
 
     def _add(

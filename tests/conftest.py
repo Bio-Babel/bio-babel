@@ -69,9 +69,6 @@ def grammar_manifest() -> PackageManifest:
         contract_class="grammar",
         tier=1,
         maturity="beta",
-        capabilities=["viewport-stack", "grob-tree"],
-        task_tags=["new-plotting-package", "sub-region-drawing"],
-        triggers=["build a plotting package on top of grid"],
         symbols=[
             SymbolContract(
                 id="grid_py.grid_points",
@@ -147,8 +144,6 @@ def analysis_manifest() -> PackageManifest:
         contract_class="analysis",
         tier=2,
         maturity="beta",
-        task_tags=["pseudotime", "trajectory"],
-        triggers=["pseudotime trajectory"],
         symbols=[
             SymbolContract(
                 id="monocle3.estimate_size_factors",

@@ -47,8 +47,8 @@ class DiscoveredDetector:
 class DiscoveryError:
     """A failed discovery or registration attempt.
 
-    Three failure modes share this record type so the health tool can
-    surface them uniformly:
+    Three failure modes share this record type so the CLI ``doctor`` command
+    can surface them uniformly:
 
     - ``kind="manifest"``  — entry point existed but the manifest factory
                               failed to load or returned the wrong type.
@@ -70,7 +70,7 @@ def discover() -> tuple[list[DiscoveredManifest], list[DiscoveryError]]:
     """Load all ``biobabel.manifest`` entry points.
 
     Returns ``(successes, errors)``. Errors are surfaced rather than swallowed
-    so the CLI / MCP ``health`` tool can warn the user about broken packages.
+    so the CLI ``doctor`` command can warn the user about broken packages.
     """
     dist_index = _build_distribution_index(MANIFEST_ENTRY_POINT_GROUP)
     successes: list[DiscoveredManifest] = []
