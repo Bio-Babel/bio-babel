@@ -18,8 +18,8 @@ Python contract — which is all that matters for correctness.
 Reads JSON on stdin:
     {"prompt": "<text>", ...}
 
-Writes JSON on stdout if R syntax is detected:
-    {"decision": "allow", "context": "<advice>"}
+Prints advice to stdout as plain text if R syntax is detected;
+UserPromptSubmit adds the hook's stdout to the model's context.
 
 Exits 0 silently if nothing matched.
 """
@@ -101,12 +101,7 @@ def main() -> int:
     for hint in unique_hints:
         context_lines.append(f"  - {hint}")
 
-    response = {
-        "decision": "allow",
-        "context": "\n".join(context_lines),
-    }
-    json.dump(response, sys.stdout)
-    sys.stdout.write("\n")
+    sys.stdout.write("\n".join(context_lines) + "\n")
     return 0
 
 

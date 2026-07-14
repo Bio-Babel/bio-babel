@@ -2,9 +2,12 @@
   "hooks": {
     "UserPromptSubmit": [
       {
-        "matcher": "*",
-        "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r-paste-detector.py",
-        "type": "command"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/r-paste-detector.py"
+          }
+        ]
       }
     ]
   }
