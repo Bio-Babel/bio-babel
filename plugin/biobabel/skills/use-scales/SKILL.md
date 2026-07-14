@@ -2,9 +2,9 @@
 name: use-scales
 description: scales-python — axis transforms, breaks, palettes, formatters (R scales port)
 contract_class: grammar
-package_version: 1.4.0.9000
+package_version: 1.4.0.9000.post3
 biobabel_version: 0.3.0
-generated_from_registry_commit: 0ad0109db8c240c08e19c3e46a9956ac47d3c14dc70969692b0d09a5a5b2af3b
+generated_from_registry_commit: b32f828e013618f6f7f3857e79977451569ad157454570ff1b5fc35ca848b373
 ---
 
 # scales-python
@@ -51,12 +51,12 @@ from scales import (
 
 # Axis transforms + breaks
 trans = log10_trans()
-ticks = breaks_log(n=5, base=10)([1, 1e6])     # → [1, 10, 100, ..., 1e6]
+ticks = breaks_log(n=5, base=10)([1, 1e4])     # → [1, 10, 100, 1000, 10000]
 strs  = label_percent(accuracy=1)([0.0, 0.5, 1.0])  # → ["0%", "50%", "100%"]
 
 # Palettes
 viridis8 = pal_viridis()(8)                    # 8 viridis hex codes
-rdylbu   = brewer_pal("RdYlBu")(11)            # 11 ColorBrewer codes
+rdylbu   = brewer_pal(palette="RdYlBu")(11)    # 11 ColorBrewer codes
 ```
 
 For more: `biobabel.list_idioms(package="scales")` and `biobabel.describe_concept("scales.Transform")`.

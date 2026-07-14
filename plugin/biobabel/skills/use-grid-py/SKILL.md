@@ -2,9 +2,9 @@
 name: use-grid-py
 description: grid_py (rgrid-python) — R grid graphics port
 contract_class: grammar
-package_version: 4.5.3.post3
+package_version: 4.5.3.post5
 biobabel_version: 0.3.0
-generated_from_registry_commit: 20beb342450a88ef49fbf361988724296d5aa4aaf9787c1d23d54d2c493d390b
+generated_from_registry_commit: 4b2a4b4234e0d6531ff9e41a596ccbbc056df50cb78506241cbd91944614bf7a
 ---
 
 # grid_py — R grid for Python
@@ -40,8 +40,8 @@ generated_from_registry_commit: 20beb342450a88ef49fbf361988724296d5aa4aaf9787c1d
 |-----------------------------------------|---------------------------------|
 | A one-liner statistical plot            | `ggplot2_py`                    |
 | A heatmap                               | `pheatmap_py` / `ComplexHeatmap_py` |
-| A new plot *type* not in ggplot2_py     | build on `grid_py` concepts/idioms; register later with `biobabel new contract` |
-| A new plotting *package* end-to-end     | `grid_py` as the foundation; add `_biobabel/` metadata when publishing |
+| A new plot *type* not in ggplot2_py     | extend ggplot2_py geom (use `scaffold(kind=geom)`) |
+| A new plotting *package* end-to-end     | `grid_py` + `scaffold(kind=package, base=grid_py)` |
 | Sub-region annotation on existing plots | `grid_py` directly              |
 
 ## Quick reference

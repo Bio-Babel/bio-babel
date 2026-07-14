@@ -4,7 +4,7 @@ description: monocle2py — single-cell DDRTree trajectory + BEAM branch analysi
 contract_class: analysis
 package_version: 2.9.0
 biobabel_version: 0.3.0
-generated_from_registry_commit: ce602040e2dff8667971ab96b9f115480a942b8221b4e6d851f563967c1dd6e9
+generated_from_registry_commit: 57d3d7be8d74faefb1976000c67dc47fbf2cb0851adb14a7446dfdf4799613eb
 ---
 
 # monocle2py
@@ -41,7 +41,7 @@ Steps 1-7 mutate the AnnData; the DE/BEAM tests **return** a DataFrame and never
 - **`obs["State"]` is a `pd.Categorical` of stringified 1-based integers** (`"1"`, `"2"`, ...). Selecting by `State == 1` (int) silently miscompares against the categorical; cast first: `adata.obs["State"].astype(int) == 1`. BEAM accepts ints (`branch_states=[2, 3]`) and casts internally.
 - **`obs["Pseudotime"] == 0` marks the trajectory root cell** in DDRTree mode. Multiple cells can share `Pseudotime==0`; the first one is treated as the canonical root by branch-path discovery.
 - **`set_ordering_filter` is required before `reduce_dimension(method='DDRTree')` for variable-gene selection** to take effect. If `var["use_for_ordering"]` is absent (or all-False), `reduce_dimension` runs on **every gene**, which is almost never what you want.
-- **NB families need size factors.** Calling `reduce_dimension` / `differential_gene_test` on a `negbinomial`/`negbinomial.size` family without `estimate_size_factors` raises. The `Tobit` and `gaussianff` families do **not** need size factors.
+- **NB families need size factors.** Calling `reduce_dimension` / `differential_gene_test` on a `negbinomial`/`negbinomial.size` family without `estimate_size_factors` raises. The `Tobit` and Gaussian (`gaussian_family()`, vfamily `uninormal`) families do **not** need size factors.
 - **Re-running `order_cells(root_state=k)` does NOT renumber `State`.** Only the first call (`root_state=None`) populates `State`; subsequent root-state pivots only update `Pseudotime`. This mirrors R behavior and is load-bearing for BEAM (which reads the original numbering).
 - **BEAM requires `Branch` in the full formula.** The default `full_model_formula_str="~sm.ns(Pseudotime, df=3)*Branch"` triggers the branch CDS build internally; remove `Branch` from the formula and BEAM degenerates to a vanilla pseudotime DE test.
 
